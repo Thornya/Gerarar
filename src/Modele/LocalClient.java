@@ -2,6 +2,7 @@ package Modele;
 
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class LocalClient {
     public static final int max_trial_transfert = 3;
@@ -29,11 +30,17 @@ public class LocalClient {
     private int server_port;
 
     public LocalClient(String address, String port) {
-        server_address = InetAddress.getByName(address);
+        try {
+            server_address = InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            //TODO gérer l'exception
+            e.printStackTrace();
+        }
         server_port = Integer.parseInt(port);
     }
 
     public void sendRequest(boolean requestMode, String filename) {
+        byte[] buffer = new byte[8192];
 
     }
 }
