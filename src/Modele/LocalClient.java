@@ -1,6 +1,8 @@
 package Modele;
 
 
+import java.net.*;
+import java.io.*;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -30,20 +32,56 @@ public class LocalClient {
 
     private InetAddress server_address;
     private int server_port;
+    private DatagramSocket ds;
 
     public LocalClient(String address, String port) {
         try {
             server_address = InetAddress.getByName(address);
+            ds = new DatagramSocket();
         } catch (UnknownHostException e) {
             //TODO gérer l'exception
             e.printStackTrace();
+        } catch (SocketException e) {
+            //TODO handle the exception
         }
         server_port = Integer.parseInt(port);
     }
 
-    public void sendRequest(boolean requestMode, String filename) {
-        byte[] buffer = new byte[8192];
+    public void sendRequest(boolean requestMode, String filename_str) {
+        byte[] opcode = new byte[2];
+        if (requestMode) {  //RRQ corresponds to true
+            opcode[1] = 1;
+        }
+        else {              //WRQ corresponds to false
+            opcode[1] = 2;
+        }
 
+        byte[] filename = filename_str.getBytes();
+
+        String mode_str = "octet";
+        byte[] mode = mode_str.getBytes();
+
+        byte nullbyte = 0;
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        try {
+            outputStream.write(opcode);
+            outputStream.write(filename);
+            outputStream.write(nullbyte);
+            outputStream.write(mode);
+            outputStream.write(nullbyte);
+        } catch (IOException e) {
+            //TODO handle the exception
+        }
+
+        byte buffer[] = outputStream.toByteArray();
+
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        try {
+            ds.send(dp);
+        } catch (IOException e) {
+            //TODO handle the exception
+        }
     }
 
     private byte[] readFile(String Filename,int start){
