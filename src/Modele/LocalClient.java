@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class LocalClient implements Runnable {
+public class LocalClient  {
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
 
