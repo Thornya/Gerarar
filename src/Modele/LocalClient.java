@@ -1,6 +1,8 @@
 package Modele;
 
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -42,5 +44,19 @@ public class LocalClient {
     public void sendRequest(boolean requestMode, String filename) {
         byte[] buffer = new byte[8192];
 
+    }
+
+    private byte[] readFile(String Filename,int start){
+        byte[] input= new byte[512];
+        int i,b;
+        try{
+            FileInputStream fe= new FileInputStream(Filename);
+            fe.read(input,start,512);
+            fe.close();
+        }
+        catch(IOException ex) {
+            System.out.println("ReadFile : "+ex);
+        }
+        return input;
     }
 }
