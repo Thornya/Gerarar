@@ -18,7 +18,7 @@ public class startView extends Application {
     public void start(Stage primaryStage) {
         AnchorPane root = null;
         try {
-            root = FXMLLoader.load(getClass().getResource("Vue/view.fxml"));
+            root = FXMLLoader.load(getClass().getResource("view.fxml"));
         } catch (IOException e) {
             e.printStackTrace();
         }
