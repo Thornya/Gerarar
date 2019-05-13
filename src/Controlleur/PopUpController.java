@@ -25,7 +25,7 @@ public class PopUpController {
         buttonQuitter.setOnAction(event -> ((Stage) buttonQuitter.getScene().getWindow()).close());
     }
 
-    public static void setTextPopUp(String s){
+    static void setTextPopUp(String s){
         text = s;
     }
 
