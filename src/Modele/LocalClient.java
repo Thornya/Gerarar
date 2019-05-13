@@ -23,5 +23,7 @@ public class LocalClient {
     int error_file_writing = -20;
     int error_creating_socket = - 30;
 
+    private Byte[] readFile(String Filename,int start){
 
+    }
 }
