@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 
-<AnchorPane fx:id="mainPane" style="-fx-font-family: 'Trebuchet MS'" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ViewController">
+<AnchorPane fx:id="mainPane" style="-fx-font-family: 'Trebuchet MS'" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controlleur.ViewController">
    <children>
       <GridPane maxWidth="800.0" prefHeight="500.0" prefWidth="800.0">
         <columnConstraints>

@@ -1,3 +1,5 @@
+package Vue;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -16,7 +18,7 @@ public class startView extends Application {
     public void start(Stage primaryStage) {
         AnchorPane root = null;
         try {
-            root = FXMLLoader.load(getClass().getResource("view.fxml"));
+            root = FXMLLoader.load(getClass().getResource("Vue/view.fxml"));
         } catch (IOException e) {
             e.printStackTrace();
         }

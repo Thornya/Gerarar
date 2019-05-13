@@ -1,3 +1,5 @@
+package Controlleur;
+
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -65,7 +67,7 @@ public class ViewController {
                 Stage stageNewWindow = new Stage();
                 try {
                     PopUpController.setTextPopUp("Adresse IP et ports enregistrés.");
-                    AnchorPane root = FXMLLoader.load(getClass().getResource("popUp.fxml"));
+                    AnchorPane root = FXMLLoader.load(getClass().getResource("Vue/popUp.fxml"));
                     setupNewWindow(stageNewWindow, root, "Erreur!");
                     stageNewWindow.showAndWait();
                 } catch (IOException e) {
@@ -99,7 +101,7 @@ public class ViewController {
         Stage stageNewWindow = new Stage();
         try {
             PopUpController.setTextPopUp(text);
-            AnchorPane root = FXMLLoader.load(getClass().getResource("popUp.fxml"));
+            AnchorPane root = FXMLLoader.load(getClass().getResource("Vue/popUp.fxml"));
             setupNewWindow(stageNewWindow, root,nom);
             stageNewWindow.showAndWait();
         } catch (IOException e) {

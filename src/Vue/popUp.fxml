@@ -6,7 +6,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane prefHeight="150.0" prefWidth="300.0" style="-fx-font-family: 'Trebuchet MS'" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="PopUpController">
+<AnchorPane prefHeight="150.0" prefWidth="300.0" style="-fx-font-family: 'Trebuchet MS'" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controlleur.PopUpController">
     <children>
         <GridPane prefHeight="150.0" prefWidth="300.0">
             <columnConstraints>
