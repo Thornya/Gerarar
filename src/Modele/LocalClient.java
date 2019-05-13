@@ -8,6 +8,8 @@ public class LocalClient {
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
 
+    public static final int transfer_succesfull = 0;
+
     public static final int error_unavailable_server = 10;
     public static final int error_no_server_response = 20;
     public static final int error_sending = 30;
@@ -43,7 +45,35 @@ public class LocalClient {
         server_port = Integer.parseInt(port);
     }
 
-    public void sendRequest(boolean requestMode, String filename_str) {
+    public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
+        try {
+            server_address = InetAddress.getByName(server_address_str);
+            ds = new DatagramSocket();
+        } catch (UnknownHostException e) {
+            //TODO gérer l'exception
+            e.printStackTrace();
+        } catch (SocketException e) {
+            //TODO handle the exception
+        }
+        server_port = Integer.parseInt(server_port_str);
+        return transfer_succesfull;
+    }
+
+    public int SendFile(String server_address_str, String server_port_str, String filename) {
+        try {
+            server_address = InetAddress.getByName(server_address_str);
+            ds = new DatagramSocket();
+        } catch (UnknownHostException e) {
+            //TODO gérer l'exception
+            e.printStackTrace();
+        } catch (SocketException e) {
+            //TODO handle the exception
+        }
+        server_port = Integer.parseInt(server_port_str);
+        return transfer_succesfull;
+    }
+
+    private void sendRequest(boolean requestMode, String filename_str) {
         byte[] opcode = new byte[2];
         if (requestMode) {  //RRQ corresponds to true
             opcode[1] = 1;
