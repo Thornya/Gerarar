@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class LocalClient {
+public class LocalClient implements Runnable {
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
 
@@ -84,12 +84,44 @@ public class LocalClient {
         }
     }
 
+
+    private void sendData(byte[]data,int size,DatagramSocket ds,short blockid){
+        byte[] opcode = new byte[2];
+        opcode[1]=3;
+
+        byte[] blockids= new byte [2];
+        blockids[1]=(byte)blockid;
+        if (blockid>255){
+            blockid= (short)(blockid&0x0000FF00);
+            blockids[0]= (byte)(blockid/256);
+        }
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        try {
+            outputStream.write(opcode);
+            outputStream.write(blockid);
+            outputStream.write(data);
+        } catch (IOException e) {
+            //TODO handle the exception
+        }
+
+        byte buffer[] = outputStream.toByteArray();
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        try {
+            ds.send(dp);
+        } catch (IOException e) {
+            //TODO handle the exception
+        }
+
+    }
+
+
     private byte[] readFile(String Filename,int start){
         byte[] input= new byte[512];
         int i,b;
         try{
             FileInputStream fe= new FileInputStream(Filename);
-            fe.read(input,start,512);
+            int size=fe.read(input,start,512);
+
             fe.close();
         }
         catch(IOException ex) {
@@ -97,4 +129,5 @@ public class LocalClient {
         }
         return input;
     }
+
 }
