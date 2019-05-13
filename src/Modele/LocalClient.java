@@ -3,10 +3,6 @@ package Modele;
 
 import java.net.*;
 import java.io.*;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class LocalClient  {
     public static final int max_trial_transfert = 3;
@@ -45,18 +41,7 @@ public class LocalClient  {
     private int server_port;
     private DatagramSocket ds;
 
-    public LocalClient(String address, String port) {
-        try {
-            server_address = InetAddress.getByName(address);
-            ds = new DatagramSocket();
-        } catch (UnknownHostException e) {
-            //TODO gérer l'exception
-            e.printStackTrace();
-        } catch (SocketException e) {
-            //TODO handle the exception
-        }
-        server_port = Integer.parseInt(port);
-    }
+
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
         try {
@@ -71,6 +56,8 @@ public class LocalClient  {
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
+
+
 
     public int SendFile(String server_address_str, String server_port_str, String filename) {
         try {
@@ -120,6 +107,15 @@ public class LocalClient  {
             ds.send(dp);
         } catch (IOException e) {
             //TODO handle the exception
+        }
+    }
+
+    private void sendError(Exception e) {
+        byte[] opcode = new byte[2];
+        opcode[1]=5;
+
+        if ( e.getMessage().contains("Access") && e.getMessage().contains("denied")) {
+
         }
     }
 
