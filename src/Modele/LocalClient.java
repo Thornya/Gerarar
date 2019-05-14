@@ -115,7 +115,7 @@ public class LocalClient  {
         opcode[1]=5;
 
         if ( e.getMessage().contains("Access") && e.getMessage().contains("denied")) {
-
+            //TODO send access denied error code (code :2)
         }
     }
 
