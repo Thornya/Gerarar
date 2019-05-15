@@ -3,10 +3,17 @@ package Modele;
 
 import java.net.*;
 import java.io.*;
+import java.util.*;
 
 public class LocalClient  {
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
+
+    public static final int opcode_RRQ = 1;
+    public static final int opcode_WRQ = 2;
+    public static final int opcode_DATA = 3;
+    public static final int opcode_ACK = 4;
+    public static final int opcode_ERR = 5;
 
     public static final int transfer_successful = 0;
 
@@ -58,6 +65,64 @@ public class LocalClient  {
     }
 
 
+    public void receivePacket() {
+        byte[] buffer = new byte[8192];
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
+        try {
+            ds.receive(dp);
+        } catch (IOException e) {
+            //TODO deal with the exception
+        }
+        byte[] payload = dp.getData();
+        switch (payload[1]) {
+            case opcode_RRQ:
+                checkRequestPayload(dp.getData());
+                String file = extractFileName(dp.getData());
+                break;
+            case opcode_WRQ:
+                break;
+            case opcode_DATA:
+                break;
+            case opcode_ACK:
+                break;
+            case opcode_ERR:
+                break;
+            default:
+                break;
+        }
+    }
+
+    private boolean checkRequestPayload(byte[] data) {
+        if (data[0] != 0) {
+            //TODO send illegal tftp
+            return false;
+        }
+        String res = "";
+        int[] opcodes = {opcode_RRQ, opcode_WRQ, opcode_DATA, opcode_ACK, opcode_ERR};
+        if (Arrays.asList(opcodes).contains(data[0]))
+        for (int i = 2; i < data.length; i++) {
+            if (data[i] == 0) {
+                return res;
+            }
+            res += (char) data[i];
+        }
+        return res;
+    }
+
+    private String extractFileName(byte[] data) {
+        String res = "";
+        for (int i = 2; i < data.length; i++) {
+            if (data[i] == 0) {
+                return res;
+            }
+            res += (char) data[i];
+        }
+        return res;
+    }
+
+
+
+
 
     public int SendFile(String server_address_str, String server_port_str, String filename) {
         try {
@@ -67,19 +132,20 @@ public class LocalClient  {
             //TODO gérer l'exception
             e.printStackTrace();
         } catch (SocketException e) {
-            //TODO handle the exception
+            System.err.println("Socket Exception occurred while initializing in 'SendFile' method : ");
+            e.printStackTrace();
         }
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
 
-    private void sendRequest(boolean requestMode, String filename_str) {
+    private void sendRequest(int opnumber, String filename_str) {
         byte[] opcode = new byte[2];
-        if (requestMode) {  //RRQ corresponds to true
-            opcode[1] = 1;
+        if (opnumber != 1 && opnumber != 2) {
+            return;
         }
-        else {              //WRQ corresponds to false
-            opcode[1] = 2;
+        else {
+            opcode[1] = ((byte) opnumber);
         }
 
         byte[] filename = filename_str.getBytes();
@@ -110,12 +176,45 @@ public class LocalClient  {
         }
     }
 
-    private void sendError(Exception e) {
-        byte[] opcode = new byte[2];
-        opcode[1]=5;
-
-        if ( e.getMessage().contains("Access") && e.getMessage().contains("denied")) {
+    private void exceptionOccurred(Exception e) {
+        if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             //TODO send access denied error code (code :2)
+            sendError(2, e.getMessage());
+        }
+        else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
+            //TODO send disk full error code (code :3)
+            sendError(3, e.getMessage());
+        }
+    }
+
+    private void sendError(int error_number, String message) {
+        byte[] opcode = new byte[2];
+        opcode[1]=opcode_ERR;
+
+        byte[] error_code = new byte[2];
+        error_code[2] = ((byte) error_number);
+
+        byte[] error_msg = message.getBytes();
+
+        byte nullbyte = 0;
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        try {
+            outputStream.write(opcode);
+            outputStream.write(error_code);
+            outputStream.write(error_msg);
+            outputStream.write(nullbyte);
+        } catch (IOException e) {
+            //TODO handle the exception
+        }
+
+        byte buffer[] = outputStream.toByteArray();
+
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        try {
+            ds.send(dp);
+        } catch (IOException e) {
+            //TODO handle the exception
         }
     }
 
