@@ -177,9 +177,9 @@ public class LocalClient  {
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
                     sendData(input, size, blockid);
-                    //if(receiveAck(blockid)){
+                    if(receiveAck(blockid)){
                         received=true;
-                    //}
+                    }
                     trial_transfert++;
                 }
                 blockid++;
@@ -313,7 +313,7 @@ public class LocalClient  {
         }
 
     }
-    private void sendACK(int nPacket) {
+    private void sendACK(short nPacket) {
     	byte[] payloadACK = new byte[4];
     	payloadACK[1] = opcode_ACK;
     	
@@ -330,18 +330,24 @@ public class LocalClient  {
 		}
     	
     }
-    private void receiveACK(int nPacket) {
+    private boolean receiveACK(short nPacket) {
     	byte[] buff = new byte[4];
-    	DatagramPacket dp = new DatagramPacket(buff,buff.length);
+
+
+
+        DatagramPacket dp = new DatagramPacket(buff,buff.length);
     	try {
+            ds.setSoTimeout(wait_time_transfert_ms);
 			ds.receive(dp);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    	if(dp.getPort()!=server_port) {
+		}catch(SocketTimeoutException e) {
+            return false;
+        } catch (IOException e) {
+            exceptionOccurred(e);
+        }
+        if(dp.getPort()!=server_port) {
     		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
     	}
+        return true;
     }
 
 
