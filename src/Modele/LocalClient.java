@@ -94,13 +94,14 @@ public class LocalClient  {
 
     private boolean checkRequestPayload(byte[] data) {
         if (data[0] != 0) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
+
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ, opcode_DATA, opcode_ACK, opcode_ERR};
         if (!Arrays.asList(opcodes).contains(data[0])) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
         int i;
@@ -110,10 +111,19 @@ public class LocalClient  {
             }
             filename += (char) data[i];
         }
+
+        String mode = "";
         if (i == data.length - 1) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
+        for(int j = i; j < data.length; j++) {
+            if (data[j] == 0) {
+                break;
+            }
+            mode += (char) data[j];
+        }
+
 
     }
 
@@ -187,15 +197,15 @@ public class LocalClient  {
     private void exceptionOccurred(Exception e) {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             //TODO send access denied error code (code :2)
-            sendError(2, e.getMessage());
+            sendError(2, e.getMessage(), server_address, server_port);
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
             //TODO send disk full error code (code :3)
-            sendError(3, e.getMessage());
+            sendError(3, e.getMessage(), server_address, server_port);
         }
     }
 
-    private void sendError(int error_number, String message) {
+    private void sendError(int error_number, String message, InetAddress adr, int port) {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_ERR;
 
@@ -218,7 +228,7 @@ public class LocalClient  {
 
         byte buffer[] = outputStream.toByteArray();
 
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, adr, port);
         try {
             ds.send(dp);
         } catch (IOException e) {
