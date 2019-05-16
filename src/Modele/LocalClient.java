@@ -30,7 +30,7 @@ public class LocalClient  {
     public static final int error_server_unkown_user = 170;
 
     public static final int error_file_creation = - 10;
-    public static final int error_file_writing = -20;
+    public static final int error_access_denied_file = -20;
     public static final int error_creating_socket = - 30;
 
     public static final int error_client_undefined = -100;
@@ -63,18 +63,18 @@ public class LocalClient  {
     }
 
 
-    private void checkRequestPayload(DatagramPacket dp) {
+    private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("First byte is not null"));
         }
 
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ};
         if (!Arrays.asList(opcodes).contains(data[1])) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Unknown opcode"));
         }
         int i;
         for (i = 2; i < data.length; i++) {
@@ -84,14 +84,14 @@ public class LocalClient  {
             filename += (char) data[i];
         }
         if (filename.length() == 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Filename length is null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Filename length is null"));
         }
 
         String mode = "";
         if (i == data.length - 1) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Data payload has been cut", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Data payload has been cut"));
         }
         for(int j = i + 1; j < data.length; j++) {
             if (data[j] == 0) {
@@ -100,13 +100,13 @@ public class LocalClient  {
             mode += (char) data[j];
         }
         if (mode.length() == 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Mode length is null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Mode length is null"));
         }
         String[] modes = {"netascii", "octet"};
         if (!Arrays.asList(modes).contains(mode.toLowerCase())) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Unknown mode length", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Unknown mode length"));
         }
     }
 
@@ -124,13 +124,13 @@ public class LocalClient  {
     private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("First byte is not null"));
         }
 
         if (! (data[1] == opcode_DATA) ) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Expecting DATA, received different opcode"));
         }
     }
 
@@ -237,10 +237,10 @@ public class LocalClient  {
         }
     }
 
-    private void exceptionOccurred(Exception e) {
+    private void exceptionOccurred(Exception e) throws AccesDeniedException {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
-            //TODO throw an exception
             sendError(2, e.getMessage(), server_address, server_port);
+            throw (new AccesDeniedException("Access denied to the file"));
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
             //TODO throw an exception
