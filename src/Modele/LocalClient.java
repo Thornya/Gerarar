@@ -1,5 +1,6 @@
 package Modele;
 
+import Exceptions.*;
 
 import java.net.*;
 import java.io.*;
@@ -18,9 +19,6 @@ public class LocalClient  {
     public static final int transfer_successful = 0;
 
     public static final int error_unavailable_server = 10;
-    public static final int error_no_server_response = 20;
-    public static final int error_sending = 30;
-    public static final int error_receiving = 40;
 
     public static final int error_server_undefined = 100;
     public static final int error_server_file_not_found = 110;
@@ -65,33 +63,6 @@ public class LocalClient  {
     }
 
 
-    public void receivePacket() {
-        byte[] buffer = new byte[8192];
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-        try {
-            ds.receive(dp);
-        } catch (IOException e) {
-            //TODO deal with the exception
-        }
-        byte[] payload = dp.getData();
-        switch (payload[1]) {
-            case opcode_RRQ:
-                checkRequestPayload(dp);
-                String file = extractFileName(dp.getData());
-                break;
-            case opcode_WRQ:
-                break;
-            case opcode_DATA:
-                break;
-            case opcode_ACK:
-                break;
-            case opcode_ERR:
-                break;
-            default:
-                break;
-        }
-    }
-
     private void checkRequestPayload(DatagramPacket dp) {
         byte[] data = dp.getData();
         if (data[0] != 0) {
@@ -101,7 +72,7 @@ public class LocalClient  {
 
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ};
-        if (!Arrays.asList(opcodes).contains(data[0])) {
+        if (!Arrays.asList(opcodes).contains(data[1])) {
             //TODO send illegal tftp and throw an exception
             sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
         }
@@ -139,20 +110,6 @@ public class LocalClient  {
         }
     }
 
-    private void checkDataPayload(DatagramPacket dp) {
-        byte[] data = dp.getData();
-        if (data[0] != 0) {
-            //TODO send illegal tftp and throw an exception
-            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-        }
-
-        if (! (data[1] == opcode_DATA) ) {
-            //TODO send illegal tftp and throw an exception
-            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
-        }
-    }
-
-
     private String extractFileName(byte[] data) {
         String res = "";
         for (int i = 2; i < data.length; i++) {
@@ -164,6 +121,18 @@ public class LocalClient  {
         return res;
     }
 
+    private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
+        byte[] data = dp.getData();
+        if (data[0] != 0) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+        }
+
+        if (! (data[1] == opcode_DATA) ) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
+        }
+    }
 
 
 
@@ -270,12 +239,16 @@ public class LocalClient  {
 
     private void exceptionOccurred(Exception e) {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
-            //TODO send access denied error code (code :2)
+            //TODO throw an exception
             sendError(2, e.getMessage(), server_address, server_port);
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
-            //TODO send disk full error code (code :3)
+            //TODO throw an exception
             sendError(3, e.getMessage(), server_address, server_port);
+        }
+        else if (e instanceof SocketException) {
+            //TODO throw an exception
+            sendError(0, e.getMessage(), server_address, server_port);
         }
     }
 
@@ -374,6 +347,22 @@ public class LocalClient  {
     		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
     	}
         return true;
+    }
+
+    private int receiveDATA(byte[] data) throws ServerIllegalTFTPException {
+        DatagramPacket dp = new DatagramPacket(data,data.length);
+        try {
+            ds.receive(dp);
+        } catch (IOException e) {
+            exceptionOccurred(e);
+        }
+        try {
+            checkDataPayload(dp);
+        } catch (ServerIllegalTFTPException e) {
+            throw e;
+        }
+        data = dp.getData();
+        return dp.getLength();
     }
 
 
