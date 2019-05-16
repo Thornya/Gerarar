@@ -94,13 +94,14 @@ public class LocalClient  {
 
     private boolean checkRequestPayload(byte[] data) {
         if (data[0] != 0) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
+
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ, opcode_DATA, opcode_ACK, opcode_ERR};
         if (!Arrays.asList(opcodes).contains(data[0])) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
         int i;
@@ -110,10 +111,19 @@ public class LocalClient  {
             }
             filename += (char) data[i];
         }
+
+        String mode = "";
         if (i == data.length - 1) {
-            //TODO send illegal tftp
+            //TODO send illegal tftp and throw an exception
             return false;
         }
+        for(int j = i; j < data.length; j++) {
+            if (data[j] == 0) {
+                break;
+            }
+            mode += (char) data[j];
+        }
+
 
     }
 
@@ -235,15 +245,15 @@ public class LocalClient  {
     private void exceptionOccurred(Exception e) {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             //TODO send access denied error code (code :2)
-            sendError(2, e.getMessage());
+            sendError(2, e.getMessage(), server_address, server_port);
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
             //TODO send disk full error code (code :3)
-            sendError(3, e.getMessage());
+            sendError(3, e.getMessage(), server_address, server_port);
         }
     }
 
-    private void sendError(int error_number, String message) {
+    private void sendError(int error_number, String message, InetAddress adr, int port) {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_ERR;
 
@@ -266,7 +276,7 @@ public class LocalClient  {
 
         byte buffer[] = outputStream.toByteArray();
 
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, adr, port);
         try {
             ds.send(dp);
         } catch (IOException e) {
@@ -302,6 +312,36 @@ public class LocalClient  {
             //TODO handle the exception
         }
 
+    }
+    private void sendACK(int nPacket) {
+    	byte[] payloadACK = new byte[4];
+    	payloadACK[1] = opcode_ACK;
+    	
+    	if(nPacket>255) {
+    		payloadACK[2] = (255&0x0000FF00);
+    		payloadACK[3] = (byte) ((nPacket-255)&0x0000FF00);
+    	}
+    	DatagramPacket dp = new DatagramPacket(payloadACK, payloadACK.length, server_address, server_port);
+    	try {
+			ds.send(dp);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    }
+    private void receiveACK(int nPacket) {
+    	byte[] buff = new byte[4];
+    	DatagramPacket dp = new DatagramPacket(buff,buff.length);
+    	try {
+			ds.receive(dp);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	if(dp.getPort()!=server_port) {
+    		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
+    	}
     }
 
 
