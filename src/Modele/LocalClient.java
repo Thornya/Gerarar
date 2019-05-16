@@ -293,6 +293,36 @@ public class LocalClient  {
         }
 
     }
+    private void sendACK(int nPacket) {
+    	byte[] payloadACK = new byte[4];
+    	payloadACK[1] = opcode_ACK;
+    	
+    	if(nPacket>255) {
+    		payloadACK[2] = (255&0x0000FF00);
+    		payloadACK[3] = (byte) ((nPacket-255)&0x0000FF00);
+    	}
+    	DatagramPacket dp = new DatagramPacket(payloadACK, payloadACK.length, server_address, server_port);
+    	try {
+			ds.send(dp);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    }
+    private void receiveACK(int nPacket) {
+    	byte[] buff = new byte[4];
+    	DatagramPacket dp = new DatagramPacket(buff,buff.length);
+    	try {
+			ds.receive(dp);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	if(dp.getPort()!=server_port) {
+    		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
+    	}
+    }
 
 
 
