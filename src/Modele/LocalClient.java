@@ -76,7 +76,7 @@ public class LocalClient  {
         byte[] payload = dp.getData();
         switch (payload[1]) {
             case opcode_RRQ:
-                checkRequestPayload(dp.getData());
+                checkRequestPayload(dp);
                 String file = extractFileName(dp.getData());
                 break;
             case opcode_WRQ:
@@ -92,17 +92,18 @@ public class LocalClient  {
         }
     }
 
-    private boolean checkRequestPayload(byte[] data) {
+    private void checkRequestPayload(DatagramPacket dp) {
+        byte[] data = dp.getData();
         if (data[0] != 0) {
             //TODO send illegal tftp and throw an exception
-            return false;
+            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
         }
 
         String filename = "";
-        int[] opcodes = {opcode_RRQ, opcode_WRQ, opcode_DATA, opcode_ACK, opcode_ERR};
+        int[] opcodes = {opcode_RRQ, opcode_WRQ};
         if (!Arrays.asList(opcodes).contains(data[0])) {
             //TODO send illegal tftp and throw an exception
-            return false;
+            sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
         }
         int i;
         for (i = 2; i < data.length; i++) {
@@ -111,21 +112,58 @@ public class LocalClient  {
             }
             filename += (char) data[i];
         }
+        if (filename.length() == 0) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "Filename length is null", dp.getAddress(), dp.getPort());
+        }
 
         String mode = "";
         if (i == data.length - 1) {
             //TODO send illegal tftp and throw an exception
-            return false;
+            sendError(4, "Data payload has been cut", dp.getAddress(), dp.getPort());
         }
-        for(int j = i; j < data.length; j++) {
+        for(int j = i + 1; j < data.length; j++) {
             if (data[j] == 0) {
                 break;
             }
             mode += (char) data[j];
         }
-
-
+        if (mode.length() == 0) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "Mode length is null", dp.getAddress(), dp.getPort());
+        }
+        String[] modes = {"netascii", "octet"};
+        if (!Arrays.asList(modes).contains(mode.toLowerCase())) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "Unknown mode length", dp.getAddress(), dp.getPort());
+        }
     }
+
+    private void checkDataPayload(DatagramPacket dp) {
+        byte[] data = dp.getData();
+        if (data[0] != 0) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+        }
+
+        if (! (data[0] == opcode_DATA) ) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
+        }
+
+        int i;
+        for (i = 2; i < data.length; i++) {
+            if (data[i] == 0) {
+                break;
+            }
+        }
+
+        if (i == 2) {
+            //TODO send illegal tftp and throw an exception
+            sendError(4, "DATA payload null", dp.getAddress(), dp.getPort());
+        }
+    }
+
 
     private String extractFileName(byte[] data) {
         String res = "";
