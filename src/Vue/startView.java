@@ -22,9 +22,12 @@ public class startView extends Application {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        primaryStage.setTitle("GERARAR");
-        primaryStage.setScene(new Scene(root,800, 500));
-        primaryStage.setResizable(false);
-        primaryStage.show();
+
+        if (root != null) {
+            primaryStage.setTitle("GERARAR");
+            primaryStage.setScene(new Scene(root, 800, 500));
+            primaryStage.setResizable(false);
+            primaryStage.show();
+        }
     }
 }

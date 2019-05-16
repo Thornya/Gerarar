@@ -6,6 +6,7 @@ import java.io.*;
 import java.util.*;
 
 public class LocalClient  {
+    private static LocalClient instance = new LocalClient();
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
 
@@ -48,7 +49,9 @@ public class LocalClient  {
     private int server_port;
     private DatagramSocket ds;
 
-
+    public static LocalClient getInstance(){
+        return instance;
+    }
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
         try {
@@ -114,7 +117,7 @@ public class LocalClient  {
             //TODO send illegal tftp
             return false;
         }
-
+        return false;
     }
 
     private String extractFileName(byte[] data) {
