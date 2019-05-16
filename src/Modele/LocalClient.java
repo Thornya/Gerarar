@@ -52,15 +52,52 @@ public class LocalClient  {
     }
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
-        try {
+    	byte[] buff = null;
+    	FileOutputStream fo = null;
+        try {        	
+        	fo = new FileOutputStream(filename);
             server_address = InetAddress.getByName(server_address_str);
             ds = new DatagramSocket();
+        	sendRequest(opcode_RRQ, filename);
+            int size = receiveDATA(buff);
+            byte[] blockId = { buff[2], buff[3] } ;
+            sendACK((short) 1);
+            fo.write(buff, 0, size);
+            boolean finTransfert = (size != 512);
+            short nPacket = 1;
+            while(!finTransfert) {
+            	size = receiveDATA(buff);
+            	blockId[0] = buff[2];
+            	blockId[1] = buff[3];
+            	short nPackShort = convertisseurByteToShort(blockId);
+            	if(nPackShort != nPacket) {
+            		//TODO gérer le cas "réception du mauvais paquet
+            		sendACK((short) (nPackShort-1));
+            	}
+            	else {
+            		sendACK(nPackShort);
+            		nPacket ++;
+            	}
+            	finTransfert = (size != 512);
+            	fo.write(buff, nPacket*512, buff.length);
+            }
+            
         } catch (UnknownHostException e) {
             //TODO gérer l'exception
             e.printStackTrace();
         } catch (SocketException e) {
             //TODO handle the exception
-        }
+        } catch (ServerIllegalTFTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        fo.close();
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
