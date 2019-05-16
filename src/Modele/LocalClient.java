@@ -189,11 +189,12 @@ public class LocalClient  {
             boolean received=false;
             while(!received && trial_transfert<max_trial_transfert) {
                 sendRequest(opcode_RRQ,filename);
-                if(receiveACK((short)0)){
+                if(receiveACK((short)0))
                     received=true;
-                }
-                trial_transfert++;
-            }
+                else
+                    trial_transfert++;
+            }if(trial_transfert==max_trial_transfert)
+                return error_unavailable_server;
 
             short blockid=1;
             boolean finTransfert=false;
@@ -203,21 +204,22 @@ public class LocalClient  {
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
                     sendData(input, size, blockid);
-                    if(receiveACK(blockid)){
+                    if(receiveACK(blockid))
                         received=true;
-                    }
-                    trial_transfert++;
+                    else
+                        trial_transfert++;
                 }
+                if(trial_transfert==max_trial_transfert)
+                    return error_unavailable_server;
                 blockid++;
                 if(!finTransfert)
-                    size = fe.read(input, blockid * 512, 512);
+                    size = fe.read(input, (blockid-1) * 512, 512);
 
             }
         } catch (FileNotFoundException e) {
-            //TODO gérer exception
+            return error_client_file_not_found;
         } catch (IOException e) {
-            //fe.read
-            //TODO gérer exception
+            exceptionOccurred(e);
         }
 
 
@@ -324,14 +326,14 @@ public class LocalClient  {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         try {
             outputStream.write(opcode);
-            outputStream.write(blockid);
+            outputStream.write(blockids);
             outputStream.write(data);
         } catch (IOException e) {
             //TODO handle the exception
         }
 
         byte buffer[] = outputStream.toByteArray();
-        DatagramPacket dp = new DatagramPacket(buffer, size, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, size+4, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {
