@@ -153,6 +153,34 @@ public class LocalClient  {
             System.err.println("Socket Exception occurred while initializing in 'SendFile' method : ");
             e.printStackTrace();
         }
+        FileInputStream fe= null;
+        try {
+            fe = new FileInputStream(filename);
+            byte[] input= new byte[512];
+            int size=fe.read(input,0,512);
+            short blockid=0;
+            sendRequest(opcode_RRQ,filename);
+            while(size==512){
+                sendData(input,size,blockid);
+
+                blockid++;
+                size=fe.read(input,blockid*512,512);
+
+            }
+        } catch (FileNotFoundException e) {
+            //TODO gérer exception
+        } catch (IOException e) {
+            //fe.read
+            //TODO gérer exception
+        }
+
+
+        try {
+            fe.close();
+        } catch (IOException e) {
+            //TODO gérer exception
+        }
+
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
@@ -237,7 +265,7 @@ public class LocalClient  {
     }
 
 
-    private void sendData(byte[]data,int size,DatagramSocket ds,short blockid){
+    private void sendData(byte[]data,int size,short blockid){
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
 
@@ -257,7 +285,7 @@ public class LocalClient  {
         }
 
         byte buffer[] = outputStream.toByteArray();
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, size, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {
@@ -267,19 +295,6 @@ public class LocalClient  {
     }
 
 
-    private byte[] readFile(String Filename,int start){
-        byte[] input= new byte[512];
-        int i,b;
-        try{
-            FileInputStream fe= new FileInputStream(Filename);
-            int size=fe.read(input,start,512);
 
-            fe.close();
-        }
-        catch(IOException ex) {
-            System.out.println("ReadFile : "+ex);
-        }
-        return input;
-    }
 
 }
