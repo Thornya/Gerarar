@@ -146,21 +146,9 @@ public class LocalClient  {
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
         }
 
-        if (! (data[0] == opcode_DATA) ) {
+        if (! (data[1] == opcode_DATA) ) {
             //TODO send illegal tftp and throw an exception
             sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
-        }
-
-        int i;
-        for (i = 2; i < data.length; i++) {
-            if (data[i] == 0) {
-                break;
-            }
-        }
-
-        if (i == 2) {
-            //TODO send illegal tftp and throw an exception
-            sendError(4, "DATA payload null", dp.getAddress(), dp.getPort());
         }
     }
 
