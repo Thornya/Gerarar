@@ -97,16 +97,24 @@ public class LocalClient  {
             //TODO send illegal tftp
             return false;
         }
-        String res = "";
+        String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ, opcode_DATA, opcode_ACK, opcode_ERR};
-        if (Arrays.asList(opcodes).contains(data[0]))
-        for (int i = 2; i < data.length; i++) {
-            if (data[i] == 0) {
-                return res;
-            }
-            res += (char) data[i];
+        if (!Arrays.asList(opcodes).contains(data[0])) {
+            //TODO send illegal tftp
+            return false;
         }
-        return res;
+        int i;
+        for (i = 2; i < data.length; i++) {
+            if (data[i] == 0) {
+                break;
+            }
+            filename += (char) data[i];
+        }
+        if (i == data.length - 1) {
+            //TODO send illegal tftp
+            return false;
+        }
+
     }
 
     private String extractFileName(byte[] data) {
@@ -141,7 +149,7 @@ public class LocalClient  {
 
     private void sendRequest(int opnumber, String filename_str) {
         byte[] opcode = new byte[2];
-        if (opnumber != 1 && opnumber != 2) {
+        if (opnumber != opcode_RRQ && opnumber != opcode_WRQ) {
             return;
         }
         else {
@@ -221,7 +229,7 @@ public class LocalClient  {
 
     private void sendData(byte[]data,int size,DatagramSocket ds,short blockid){
         byte[] opcode = new byte[2];
-        opcode[1]=3;
+        opcode[1]=opcode_DATA;
 
         byte[] blockids= new byte [2];
         blockids[1]=(byte)blockid;
