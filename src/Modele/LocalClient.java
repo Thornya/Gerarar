@@ -163,9 +163,9 @@ public class LocalClient  {
             boolean received=false;
             while(!received && trial_transfert<max_trial_transfert) {
                 sendRequest(opcode_RRQ,filename);
-                //if(receiveAck(0)){
+                if(receiveACK((short)0)){
                     received=true;
-                //}
+                }
                 trial_transfert++;
             }
 
@@ -177,7 +177,7 @@ public class LocalClient  {
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
                     sendData(input, size, blockid);
-                    if(receiveAck(blockid)){
+                    if(receiveACK(blockid)){
                         received=true;
                     }
                     trial_transfert++;
