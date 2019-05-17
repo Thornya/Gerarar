@@ -164,6 +164,10 @@ public class LocalClient  {
         return res;
     }
 
+    private short convertisseurByteShort(byte[] data){
+
+        return (short) (data[1]*255+data[0]);
+    }
 
 
 
@@ -188,7 +192,7 @@ public class LocalClient  {
             int trial_transfert=0;
             boolean received=false;
             while(!received && trial_transfert<max_trial_transfert) {
-                sendRequest(opcode_RRQ,filename);
+                sendRequest(opcode_WRQ,filename);
                 if(receiveACK((short)0))
                     received=true;
                 else
@@ -215,19 +219,16 @@ public class LocalClient  {
                 if(!finTransfert)
                     size = fe.read(input, (blockid-1) * 512, 512);
 
+
+
             }
+            fe.close();
         } catch (FileNotFoundException e) {
             return error_client_file_not_found;
         } catch (IOException e) {
             exceptionOccurred(e);
         }
 
-
-        try {
-            fe.close();
-        } catch (IOException e) {
-            //TODO gérer exception
-        }
 
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
