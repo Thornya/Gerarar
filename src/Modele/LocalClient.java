@@ -54,7 +54,7 @@ public class LocalClient  {
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
     	byte[] buff = null;
     	FileOutputStream fo = null;
-        try {        	
+        try {
         	fo = new FileOutputStream(filename);
             server_address = InetAddress.getByName(server_address_str);
             ds = new DatagramSocket();
@@ -69,7 +69,7 @@ public class LocalClient  {
             	size = receiveDATA(buff);
             	blockId[0] = buff[2];
             	blockId[1] = buff[3];
-            	short nPackShort = convertisseurByteToShort(blockId);
+            	short nPackShort = convertisseurByteShort(blockId);
             	if(nPackShort != nPacket) {
             		//TODO gérer le cas "réception du mauvais paquet
             		sendACK((short) (nPackShort-1));
@@ -81,7 +81,7 @@ public class LocalClient  {
             	finTransfert = (size != 512);
             	fo.write(buff, nPacket*512, buff.length);
             }
-            
+
         } catch (UnknownHostException e) {
             //TODO gérer l'exception
             e.printStackTrace();
@@ -173,6 +173,10 @@ public class LocalClient  {
             throw (new ServerIllegalTFTPException("Expecting DATA, received different opcode"));
         }
     }
+    private short convertisseurByteShort(byte[] data){
+
+        return (short) (data[1]*255+data[0]);
+    }
 
 
 
@@ -197,12 +201,13 @@ public class LocalClient  {
             int trial_transfert=0;
             boolean received=false;
             while(!received && trial_transfert<max_trial_transfert) {
-                sendRequest(opcode_RRQ,filename);
-                if(receiveACK((short)0)){
+                sendRequest(opcode_WRQ,filename);
+                if(receiveACK((short)0))
                     received=true;
-                }
-                trial_transfert++;
-            }
+                else
+                    trial_transfert++;
+            }if(trial_transfert==max_trial_transfert)
+                return error_unavailable_server;
 
             short blockid=1;
             boolean finTransfert=false;
@@ -212,29 +217,27 @@ public class LocalClient  {
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
                     sendData(input, size, blockid);
-                    if(receiveACK(blockid)){
+                    if(receiveACK(blockid))
                         received=true;
-                    }
-                    trial_transfert++;
+                    else
+                        trial_transfert++;
                 }
+                if(trial_transfert==max_trial_transfert)
+                    return error_unavailable_server;
                 blockid++;
                 if(!finTransfert)
-                    size = fe.read(input, blockid * 512, 512);
+                    size = fe.read(input, (blockid-1) * 512, 512);
+
+
 
             }
-        } catch (FileNotFoundException e) {
-            //TODO gérer exception
-        } catch (IOException e) {
-            //fe.read
-            //TODO gérer exception
-        }
-
-
-        try {
             fe.close();
+        } catch (FileNotFoundException e) {
+            return error_client_file_not_found;
         } catch (IOException e) {
-            //TODO gérer exception
+            exceptionOccurred(e);
         }
+
 
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
@@ -337,14 +340,14 @@ public class LocalClient  {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         try {
             outputStream.write(opcode);
-            outputStream.write(blockid);
+            outputStream.write(blockids);
             outputStream.write(data);
         } catch (IOException e) {
             //TODO handle the exception
         }
 
         byte buffer[] = outputStream.toByteArray();
-        DatagramPacket dp = new DatagramPacket(buffer, size, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, size+4, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {
