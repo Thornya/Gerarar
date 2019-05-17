@@ -56,10 +56,10 @@ public class LocalClient  {
     	byte[] buff = new byte[8192];
     	FileOutputStream fo = null;
         try {
-        	fo = new FileOutputStream(filename);
+            fo = new FileOutputStream(filename);
             server_address = InetAddress.getByName(server_address_str);
             ds = new DatagramSocket();
-        	sendRequest(opcode_RRQ, filename);
+            sendRequest(opcode_RRQ, filename);
             int size = receiveDATA(buff);
             byte[] blockId = { buff[2], buff[3] } ;
             sendACK((short) 1);
@@ -67,38 +67,26 @@ public class LocalClient  {
             boolean finTransfert = (size != 512);
             short nPacket = 1;
             while(!finTransfert) {
-            	size = receiveDATA(buff);
-            	blockId[0] = buff[2];
-            	blockId[1] = buff[3];
-            	short nPackShort = convertisseurByteShort(blockId);
-            	if(nPackShort != nPacket) {
-            		//TODO gérer le cas "réception du mauvais paquet
-            		sendACK((short) (nPackShort-1));
-            	}
-            	else {
-            		sendACK(nPackShort);
-            		nPacket ++;
-            	}
-            	finTransfert = (size != 512);
-            	fo.write(buff, nPacket*512, buff.length);
+                size = receiveDATA(buff);
+                blockId[0] = buff[2];
+                blockId[1] = buff[3];
+                short nPackShort = convertisseurByteShort(blockId);
+                if(nPackShort != nPacket) {
+                    //TODO gérer le cas "réception du mauvais paquet
+                    sendACK((short) (nPackShort-1));
+                }
+                else {
+                    sendACK(nPackShort);
+                    nPacket ++;
+                }
+                finTransfert = (size != 512);
+                fo.write(buff, nPacket*512, buff.length);
             }
 
-        } catch (UnknownHostException e) {
-            //TODO gérer l'exception
-            e.printStackTrace();
-        } catch (SocketException e) {
-            //TODO handle the exception
-        } catch (ServerIllegalTFTPOperationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+            fo.close();
+        }catch (Exception e) {
+            return exceptionOccurred(e);
 		}
-        fo.close();
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
@@ -234,7 +222,7 @@ public class LocalClient  {
             fe.close();
         } catch (FileNotFoundException e) {
             return error_client_file_not_found;
-        } catch (IOException e) {
+        } catch (Exception e) {
             exceptionOccurred(e);
         }
 
@@ -280,7 +268,7 @@ public class LocalClient  {
         }
     }
 
-    private void exceptionOccurred(Exception e)  {
+    private int exceptionOccurred(Exception e)  {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             sendError(2, e.getMessage(), server_address, server_port);
             throw (new AccessDeniedException("Access denied to the file"));
@@ -293,6 +281,7 @@ public class LocalClient  {
             //TODO throw an exception
             sendError(0, e.getMessage(), server_address, server_port);
         }
+        return 666;
     }
 
     private void sendError(int error_number, String message, InetAddress adr, int port) throws Exception {
@@ -358,7 +347,7 @@ public class LocalClient  {
     private void sendACK(short nPacket) throws Exception {
     	byte[] payloadACK = new byte[4];
     	payloadACK[1] = opcode_ACK;
-    	
+
     	if(nPacket>255) {
     		payloadACK[2] = (255&0x0000FF00);
     		payloadACK[3] = (byte) ((nPacket-255)&0x0000FF00);
@@ -375,10 +364,10 @@ public class LocalClient  {
     	byte[] buff = new byte[4];
 
         DatagramPacket dp = new DatagramPacket(buff,buff.length);
-    	try {
+        try {
             ds.setSoTimeout(wait_time_transfert_ms);
-			ds.receive(dp);
-		}catch(SocketTimeoutException e) {
+            ds.receive(dp);
+        }catch(SocketTimeoutException e) {
             return false;
         }
         if(dp.getPort()!=server_port) {
