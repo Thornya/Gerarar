@@ -69,7 +69,7 @@ public class LocalClient  {
             	size = receiveDATA(buff);
             	blockId[0] = buff[2];
             	blockId[1] = buff[3];
-            	short nPackShort = convertisseurByteToShort(blockId);
+            	short nPackShort = convertisseurByteShort(blockId);
             	if(nPackShort != nPacket) {
             		//TODO gérer le cas "réception du mauvais paquet
             		sendACK((short) (nPackShort-1));
