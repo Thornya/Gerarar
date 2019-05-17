@@ -52,7 +52,7 @@ public class LocalClient  {
     }
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
-    	byte[] buff = null;
+    	byte[] buff = new byte[8192];
     	FileOutputStream fo = null;
         try {
         	fo = new FileOutputStream(filename);
@@ -87,7 +87,7 @@ public class LocalClient  {
             e.printStackTrace();
         } catch (SocketException e) {
             //TODO handle the exception
-        } catch (ServerIllegalTFTPException e) {
+        } catch (ServerIllegalTFTPOperationException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (FileNotFoundException e) {
@@ -103,18 +103,18 @@ public class LocalClient  {
     }
 
 
-    private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
+    private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPOperationException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("First byte is not null"));
+            throw (new ServerIllegalTFTPOperationException("First byte is not null"));
         }
 
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ};
         if (!Arrays.asList(opcodes).contains(data[1])) {
             sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Unknown opcode"));
+            throw (new ServerIllegalTFTPOperationException("Unknown opcode"));
         }
         int i;
         for (i = 2; i < data.length; i++) {
@@ -125,13 +125,13 @@ public class LocalClient  {
         }
         if (filename.length() == 0) {
             sendError(4, "Filename length is null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Filename length is null"));
+            throw (new ServerIllegalTFTPOperationException("Filename length is null"));
         }
 
         String mode = "";
         if (i == data.length - 1) {
             sendError(4, "Data payload has been cut", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Data payload has been cut"));
+            throw (new ServerIllegalTFTPOperationException("Data payload has been cut"));
         }
         for(int j = i + 1; j < data.length; j++) {
             if (data[j] == 0) {
@@ -141,12 +141,12 @@ public class LocalClient  {
         }
         if (mode.length() == 0) {
             sendError(4, "Mode length is null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Mode length is null"));
+            throw (new ServerIllegalTFTPOperationException("Mode length is null"));
         }
         String[] modes = {"netascii", "octet"};
         if (!Arrays.asList(modes).contains(mode.toLowerCase())) {
             sendError(4, "Unknown mode length", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Unknown mode length"));
+            throw (new ServerIllegalTFTPOperationException("Unknown mode length"));
         }
     }
 
@@ -161,16 +161,16 @@ public class LocalClient  {
         return res;
     }
 
-    private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
+    private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPOperationException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("First byte is not null"));
+            throw (new ServerIllegalTFTPOperationException("First byte is not null"));
         }
 
         if (! (data[1] == opcode_DATA) ) {
             sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPException("Expecting DATA, received different opcode"));
+            throw (new ServerIllegalTFTPOperationException("Expecting DATA, received different opcode"));
         }
     }
     private short convertisseurByteShort(byte[] data){
@@ -280,10 +280,10 @@ public class LocalClient  {
         }
     }
 
-    private void exceptionOccurred(Exception e) throws AccesDeniedException {
+    private void exceptionOccurred(Exception e)  {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             sendError(2, e.getMessage(), server_address, server_port);
-            throw (new AccesDeniedException("Access denied to the file"));
+            //throw (new AccesDeniedException("Access denied to the file"));
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
             //TODO throw an exception
@@ -372,10 +372,8 @@ public class LocalClient  {
 		}
     	
     }
-    private boolean receiveACK(short nPacket) {
+    private boolean receiveACK(short nPacket) throws Exception  {
     	byte[] buff = new byte[4];
-
-
 
         DatagramPacket dp = new DatagramPacket(buff,buff.length);
     	try {
@@ -383,28 +381,23 @@ public class LocalClient  {
 			ds.receive(dp);
 		}catch(SocketTimeoutException e) {
             return false;
-        } catch (IOException e) {
-            exceptionOccurred(e);
         }
         if(dp.getPort()!=server_port) {
     		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
+    		return receiveACK(nPacket);
     	}
+        byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
+        if (nPacket != convertisseurByteShort(packetNumber)) {
+            sendError(2, "Acquitted packet number doesn't match", dp.getAddress(),dp.getPort());
+            throw  new ClientIllegalTFTPOperationException("Acquitted packet number doesn't match");
+        }
         return true;
     }
 
-    private int receiveDATA(byte[] data) throws ServerIllegalTFTPException {
+    private int receiveDATA(byte[] data) throws Exception {
         DatagramPacket dp = new DatagramPacket(data,data.length);
-        try {
-            ds.receive(dp);
-        } catch (IOException e) {
-            exceptionOccurred(e);
-        }
-        try {
-            checkDataPayload(dp);
-        } catch (ServerIllegalTFTPException e) {
-            throw e;
-        }
-        data = dp.getData();
+        ds.receive(dp);
+        checkDataPayload(dp);
         return dp.getLength();
     }
 
