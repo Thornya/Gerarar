@@ -33,6 +33,7 @@ public class LocalClient  {
     public static final int error_file_creation = - 10;
     public static final int error_access_denied_file = -20;
     public static final int error_creating_socket = - 30;
+    public static final int error_merging_byte_arrays = - 40;
 
     public static final int error_client_undefined = -100;
     public static final int error_client_file_not_found = -110;
@@ -174,7 +175,6 @@ public class LocalClient  {
         }
     }
     private short convertisseurByteShort(byte[] data){
-
         return (short) (data[1]*255+data[0]);
     }
 
@@ -243,7 +243,7 @@ public class LocalClient  {
         return transfer_successful;
     }
 
-    private void sendRequest(int opnumber, String filename_str) {
+    private void sendRequest(int opnumber, String filename_str) throws Exception {
         byte[] opcode = new byte[2];
         if (opnumber != opcode_RRQ && opnumber != opcode_WRQ) {
             return;
@@ -267,7 +267,7 @@ public class LocalClient  {
             outputStream.write(mode);
             outputStream.write(nullbyte);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new MergingByteArraysException("Unable to merge byte arrays in sendRequest");
         }
 
         byte buffer[] = outputStream.toByteArray();
@@ -283,7 +283,7 @@ public class LocalClient  {
     private void exceptionOccurred(Exception e)  {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
             sendError(2, e.getMessage(), server_address, server_port);
-            //throw (new AccesDeniedException("Access denied to the file"));
+            throw (new AccessDeniedException("Access denied to the file"));
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
             //TODO throw an exception
@@ -295,7 +295,7 @@ public class LocalClient  {
         }
     }
 
-    private void sendError(int error_number, String message, InetAddress adr, int port) {
+    private void sendError(int error_number, String message, InetAddress adr, int port) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_ERR;
 
@@ -313,7 +313,7 @@ public class LocalClient  {
             outputStream.write(error_msg);
             outputStream.write(nullbyte);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new MergingByteArraysException("Unable to merge byte arrays in sendError");
         }
 
         byte buffer[] = outputStream.toByteArray();
@@ -322,12 +322,12 @@ public class LocalClient  {
         try {
             ds.send(dp);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new UnableToSendPacketException("Unable to send DatagramPacket in sendError");
         }
     }
 
 
-    private void sendData(byte[]data,int size,short blockid){
+    private void sendData(byte[]data,int size,short blockid) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
 
@@ -343,7 +343,7 @@ public class LocalClient  {
             outputStream.write(blockids);
             outputStream.write(data);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new MergingByteArraysException("Unable to merge byte arrays in sendData");
         }
 
         byte buffer[] = outputStream.toByteArray();
@@ -351,11 +351,11 @@ public class LocalClient  {
         try {
             ds.send(dp);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new UnableToSendPacketException("Unable to send DatagramPacket in sendData");
         }
 
     }
-    private void sendACK(short nPacket) {
+    private void sendACK(short nPacket) throws Exception {
     	byte[] payloadACK = new byte[4];
     	payloadACK[1] = opcode_ACK;
     	
@@ -367,8 +367,7 @@ public class LocalClient  {
     	try {
 			ds.send(dp);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+            throw new UnableToSendPacketException("Unable to send DatagramPacket in sendACK");
 		}
     	
     }
