@@ -1,5 +1,7 @@
 package Controlleur;
 
+import Modele.LocalClient;
+import javafx.beans.binding.BooleanBinding;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -20,32 +22,45 @@ public class ViewController {
     public Button buttonValiderIP, buttonQuitter, buttonParcourir, buttonEnvoyer, buttonTelecharger;
     public TextField TFadresseIP, TFport, TFnomFicher;
     public Label labelNomFichier;
-    private String IP, port;
-    private File fichier;
-    private boolean erreur;
+    private static String IP, port, fichier;
+    private LocalClient client;
+    private static int codeErreur = 0;
 
     private final String erreurTitre = "Erreur!";
     private final String ipTitre = "Destination confirmée!";
     private final String ipTexte = "Adresse IP et ports enregistrés.";
 
-
-
     @FXML
     private void initialize() {
+        client = LocalClient.getInstance();
         setupButtonValiderIP();
         setupButtonParcourir();
         setupButtonEnvoyer();
         setupButtonTelecharger();
         setupButtonQuit();
-
+        setupTextField();
     }
 
     private void setupButtonValiderIP(){
         buttonValiderIP.setOnAction(event ->{
-            if (TFadresseIP.getText() != "" && TFadresseIP != null && TFport.getText() != "" && TFport.getText() != null) {
+            if (!TFadresseIP.getText().equals("") && TFadresseIP != null && !TFport.getText().equals("") && TFport.getText() != null) {
                 IP = TFadresseIP.getText();
                 port = TFport.getText();
-                newPopUp(ipTitre,ipTexte);
+                newPopUp(ipTitre,ipTexte, PopUpType.INFO);
+            }
+        });
+
+        buttonValiderIP.disableProperty().bind(new BooleanBinding()
+        {
+            {
+                super.bind(TFadresseIP.textProperty(),
+                           TFport.textProperty());
+            }
+
+            @Override
+            protected boolean computeValue() {
+                return (TFadresseIP.getText().isEmpty()
+                        || TFport.getText().isEmpty());
             }
         });
     }
@@ -54,29 +69,36 @@ public class ViewController {
         buttonParcourir.setOnAction(event -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Choisir le fichier à transferer");
-            fichier = fileChooser.showOpenDialog(mainPane.getScene().getWindow());
-            if (fichier != null) {
-                labelNomFichier.setText(fichier.getAbsolutePath());
+            File file = fileChooser.showOpenDialog(mainPane.getScene().getWindow());
+            if (file != null) {
+                fichier = file.getAbsolutePath();
+                labelNomFichier.setText(fichier);
+                if (!IP.equals("") && !port.equals(""))
+                    buttonEnvoyer.setDisable(false);
             }
         });
     }
 
     private void setupButtonEnvoyer(){
         buttonEnvoyer.setOnAction(event ->{
-            //TODO: Ajouter l'envoi
-            int erreurCode = 100;
-            if(erreur) {
-                newPopUp(erreurTitre, getErrorText(erreurCode));
+            if (testReadyE()) {
+                codeErreur = client.SendFile(IP, port, fichier);
+                if (codeErreur != 0) {
+                    newPopUp(erreurTitre, getErrorText(codeErreur), PopUpType.ERROR);
+                    codeErreur = 0;
+                }
             }
         });
     }
 
     private void setupButtonTelecharger(){
         buttonTelecharger.setOnAction(event ->{
-            //TODO: Ajouter le receive
-            int erreurCode = 10;
-            if(erreur) {
-                newPopUp(erreurTitre, getErrorText(erreurCode));
+            if (testReadyR()) {
+                codeErreur = client.ReceiveFile(IP, port, fichier);
+                if (codeErreur != 0) {
+                    newPopUp(erreurTitre, getErrorText(codeErreur), PopUpType.ERROR);
+                    codeErreur = 0;
+                }
             }
         });
     }
@@ -85,10 +107,30 @@ public class ViewController {
         buttonQuitter.setOnAction(event -> ((Stage) mainPane.getScene().getWindow()).close());
     }
 
-    private void newPopUp(String nom, String text){
+    private void setupTextField(){
+        buttonTelecharger.disableProperty().bind(new BooleanBinding() {
+            {
+                super.bind(TFnomFicher.textProperty(),
+                        TFadresseIP.textProperty(),
+                        TFport.textProperty());
+            }
+
+            @Override
+            protected boolean computeValue() {
+                return (TFnomFicher.getText().isEmpty()
+                        || TFadresseIP.getText().isEmpty()
+                        || TFport.getText().isEmpty());
+            }
+        });
+    }
+
+    private void newPopUp(String nom, String text, PopUpType type){
         Stage stageNewWindow = new Stage();
         try {
-            PopUpController.setTextPopUp("Erreur: " + text);
+            if (type == PopUpType.ERROR)
+                PopUpController.setTextPopUp("Erreur: " + text);
+            else
+                PopUpController.setTextPopUp(text);
             AnchorPane root = FXMLLoader.load(getClass().getResource("../Vue/popUp.fxml"));
             setupNewWindow(stageNewWindow, root,nom);
             stageNewWindow.showAndWait();
@@ -102,6 +144,16 @@ public class ViewController {
         stage.setScene(new Scene(mainPane, 300, 150));
         stage.setResizable(false);
         stage.initModality(Modality.APPLICATION_MODAL);
+    }
+
+    private boolean testReadyE(){
+        return (!IP.equals("") && !port.equals("") &&
+                (fichier != null && !fichier.equals("")));
+    }
+
+    private boolean testReadyR(){
+        return (!IP.equals("") && !port.equals("")) &&
+                (TFnomFicher.getText() != null && !TFnomFicher.getText().equals(""));
     }
 
     private String getErrorText(int errorCode){

@@ -1,11 +1,13 @@
 package Modele;
 
+import Exceptions.*;
 
 import java.net.*;
 import java.io.*;
 import java.util.*;
 
 public class LocalClient  {
+    private static LocalClient instance;
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
 
@@ -18,9 +20,6 @@ public class LocalClient  {
     public static final int transfer_successful = 0;
 
     public static final int error_unavailable_server = 10;
-    public static final int error_no_server_response = 20;
-    public static final int error_sending = 30;
-    public static final int error_receiving = 40;
 
     public static final int error_server_undefined = 100;
     public static final int error_server_file_not_found = 110;
@@ -32,7 +31,7 @@ public class LocalClient  {
     public static final int error_server_unkown_user = 170;
 
     public static final int error_file_creation = - 10;
-    public static final int error_file_writing = -20;
+    public static final int error_access_denied_file = -20;
     public static final int error_creating_socket = - 30;
 
     public static final int error_client_undefined = -100;
@@ -48,62 +47,74 @@ public class LocalClient  {
     private int server_port;
     private DatagramSocket ds;
 
-
+    public static LocalClient getInstance(){
+        return instance;
+    }
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
+    	byte[] buff = null;
+    	FileOutputStream fo = null;
         try {
+        	fo = new FileOutputStream(filename);
             server_address = InetAddress.getByName(server_address_str);
             ds = new DatagramSocket();
+        	sendRequest(opcode_RRQ, filename);
+            int size = receiveDATA(buff);
+            byte[] blockId = { buff[2], buff[3] } ;
+            sendACK((short) 1);
+            fo.write(buff, 0, size);
+            boolean finTransfert = (size != 512);
+            short nPacket = 1;
+            while(!finTransfert) {
+            	size = receiveDATA(buff);
+            	blockId[0] = buff[2];
+            	blockId[1] = buff[3];
+            	short nPackShort = convertisseurByteToShort(blockId);
+            	if(nPackShort != nPacket) {
+            		//TODO gérer le cas "réception du mauvais paquet
+            		sendACK((short) (nPackShort-1));
+            	}
+            	else {
+            		sendACK(nPackShort);
+            		nPacket ++;
+            	}
+            	finTransfert = (size != 512);
+            	fo.write(buff, nPacket*512, buff.length);
+            }
+
         } catch (UnknownHostException e) {
             //TODO gérer l'exception
             e.printStackTrace();
         } catch (SocketException e) {
             //TODO handle the exception
-        }
+        } catch (ServerIllegalTFTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        fo.close();
         server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
 
 
-    public void receivePacket() {
-        byte[] buffer = new byte[8192];
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-        try {
-            ds.receive(dp);
-        } catch (IOException e) {
-            //TODO deal with the exception
-        }
-        byte[] payload = dp.getData();
-        switch (payload[1]) {
-            case opcode_RRQ:
-                checkRequestPayload(dp);
-                String file = extractFileName(dp.getData());
-                break;
-            case opcode_WRQ:
-                break;
-            case opcode_DATA:
-                break;
-            case opcode_ACK:
-                break;
-            case opcode_ERR:
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void checkRequestPayload(DatagramPacket dp) {
+    private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("First byte is not null"));
         }
 
         String filename = "";
         int[] opcodes = {opcode_RRQ, opcode_WRQ};
-        if (!Arrays.asList(opcodes).contains(data[0])) {
-            //TODO send illegal tftp and throw an exception
+        if (!Arrays.asList(opcodes).contains(data[1])) {
             sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Unknown opcode"));
         }
         int i;
         for (i = 2; i < data.length; i++) {
@@ -113,14 +124,14 @@ public class LocalClient  {
             filename += (char) data[i];
         }
         if (filename.length() == 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Filename length is null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Filename length is null"));
         }
 
         String mode = "";
         if (i == data.length - 1) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Data payload has been cut", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Data payload has been cut"));
         }
         for(int j = i + 1; j < data.length; j++) {
             if (data[j] == 0) {
@@ -129,29 +140,15 @@ public class LocalClient  {
             mode += (char) data[j];
         }
         if (mode.length() == 0) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Mode length is null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Mode length is null"));
         }
         String[] modes = {"netascii", "octet"};
         if (!Arrays.asList(modes).contains(mode.toLowerCase())) {
-            //TODO send illegal tftp and throw an exception
             sendError(4, "Unknown mode length", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Unknown mode length"));
         }
     }
-
-    private void checkDataPayload(DatagramPacket dp) {
-        byte[] data = dp.getData();
-        if (data[0] != 0) {
-            //TODO send illegal tftp and throw an exception
-            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-        }
-
-        if (! (data[1] == opcode_DATA) ) {
-            //TODO send illegal tftp and throw an exception
-            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
-        }
-    }
-
 
     private String extractFileName(byte[] data) {
         String res = "";
@@ -164,6 +161,18 @@ public class LocalClient  {
         return res;
     }
 
+    private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPException {
+        byte[] data = dp.getData();
+        if (data[0] != 0) {
+            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("First byte is not null"));
+        }
+
+        if (! (data[1] == opcode_DATA) ) {
+            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
+            throw (new ServerIllegalTFTPException("Expecting DATA, received different opcode"));
+        }
+    }
     private short convertisseurByteShort(byte[] data){
 
         return (short) (data[1]*255+data[0]);
@@ -271,14 +280,18 @@ public class LocalClient  {
         }
     }
 
-    private void exceptionOccurred(Exception e) {
+    private void exceptionOccurred(Exception e) throws AccesDeniedException {
         if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
-            //TODO send access denied error code (code :2)
             sendError(2, e.getMessage(), server_address, server_port);
+            throw (new AccesDeniedException("Access denied to the file"));
         }
         else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
-            //TODO send disk full error code (code :3)
+            //TODO throw an exception
             sendError(3, e.getMessage(), server_address, server_port);
+        }
+        else if (e instanceof SocketException) {
+            //TODO throw an exception
+            sendError(0, e.getMessage(), server_address, server_port);
         }
     }
 
@@ -377,6 +390,22 @@ public class LocalClient  {
     		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
     	}
         return true;
+    }
+
+    private int receiveDATA(byte[] data) throws ServerIllegalTFTPException {
+        DatagramPacket dp = new DatagramPacket(data,data.length);
+        try {
+            ds.receive(dp);
+        } catch (IOException e) {
+            exceptionOccurred(e);
+        }
+        try {
+            checkDataPayload(dp);
+        } catch (ServerIllegalTFTPException e) {
+            throw e;
+        }
+        data = dp.getData();
+        return dp.getLength();
     }
 
 
