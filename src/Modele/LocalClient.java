@@ -176,12 +176,14 @@ public class LocalClient  {
             blockid ++;
             boolean finTransfert = false;
             while (!finTransfert) {
+                System.out.println("entrée du while");
                 finTransfert = (size != 512);
+                System.out.println("booleen fintransfert vérifié : " + finTransfert);
                 trial_transfert = 0;
                 received = false;
                 while (!received && (trial_transfert < max_trial_transfert) ) {
                     System.out.println("Envoi data, tentative " + trial_transfert);
-                    sendData(input, blockid);
+                    sendData(input, blockid, size);
                     System.out.println("Data envoyé, reception ack");
                     if (receiveACK(blockid, false)) {
                         received = true;
@@ -198,6 +200,7 @@ public class LocalClient  {
                     System.out.println("Size lue : " + size + ", blockid : " + blockid);
 
             }
+            System.out.println("Sortie du while");
             fe.close();
         } catch (NullPointerException e) {
             System.err.println("NullPointerException occurred while initializing in 'SendFile' method : ");
@@ -441,7 +444,7 @@ public class LocalClient  {
         }
     }
 
-    private static void sendData(byte[] data, short blockid) throws Exception {
+    private static void sendData(byte[] data, short blockid, int size) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
 
@@ -462,7 +465,7 @@ public class LocalClient  {
 
         byte[] buffer = outputStream.toByteArray();
         System.out.println("Envoi DATA : opcode : " + convertisseurByteShort(opcode) + ", blockid théorique : " + blockid + ", blockid reel : " + convertisseurByteShort(blockids) + ", length : " + buffer.length);
-        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
+        DatagramPacket dp = new DatagramPacket(buffer, size + 4, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {

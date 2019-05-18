@@ -20,7 +20,7 @@ public class ViewController {
 
     public AnchorPane mainPane;
     public Button buttonValiderIP, buttonQuitter, buttonParcourir, buttonEnvoyer, buttonTelecharger;
-    public TextField TFadresseIP, TFport, TFnomFicher;
+    public TextField TFadresseIP, TFport, TFnomFichier;
     public Label labelNomFichier;
     private static String IP, port, fichier;
     private static int retourFonction = 0;
@@ -92,7 +92,7 @@ public class ViewController {
     private void setupButtonTelecharger(){
         buttonTelecharger.setOnAction(event ->{
             if (testReadyR()) {
-                retourFonction = LocalClient.ReceiveFile(IP, port, fichier);
+                retourFonction = LocalClient.ReceiveFile(IP, port, TFnomFichier.getText());
                 if (retourFonction != LocalClient.transfer_successful) {
                     newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
                     retourFonction = 0;
@@ -108,14 +108,14 @@ public class ViewController {
     private void setupTextField(){
         buttonTelecharger.disableProperty().bind(new BooleanBinding() {
             {
-                super.bind(TFnomFicher.textProperty(),
+                super.bind(TFnomFichier.textProperty(),
                         TFadresseIP.textProperty(),
                         TFport.textProperty());
             }
 
             @Override
             protected boolean computeValue() {
-                return (TFnomFicher.getText().isEmpty()
+                return (TFnomFichier.getText().isEmpty()
                         || TFadresseIP.getText().isEmpty()
                         || TFport.getText().isEmpty());
             }
@@ -151,7 +151,7 @@ public class ViewController {
 
     private boolean testReadyR(){
         return (!IP.equals("") && !port.equals("")) &&
-                (TFnomFicher.getText() != null && !TFnomFicher.getText().equals(""));
+                (TFnomFichier.getText() != null && !TFnomFichier.getText().equals(""));
     }
 
     private String getErrorText(int errorCode){
