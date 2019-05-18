@@ -92,65 +92,7 @@ public class LocalClient  {
     }
 
 
-    private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPOperationException {
-        byte[] data = dp.getData();
-        if (data[0] != 0) {
-            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("First byte is not null"));
-        }
-
-        String filename = "";
-        int[] opcodes = {opcode_RRQ, opcode_WRQ};
-        if (!Arrays.asList(opcodes).contains(data[1])) {
-            sendError(4, "Unknown opcode", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Unknown opcode"));
-        }
-        int i;
-        for (i = 2; i < data.length; i++) {
-            if (data[i] == 0) {
-                break;
-            }
-            filename += (char) data[i];
-        }
-        if (filename.length() == 0) {
-            sendError(4, "Filename length is null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Filename length is null"));
-        }
-
-        String mode = "";
-        if (i == data.length - 1) {
-            sendError(4, "Data payload has been cut", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Data payload has been cut"));
-        }
-        for(int j = i + 1; j < data.length; j++) {
-            if (data[j] == 0) {
-                break;
-            }
-            mode += (char) data[j];
-        }
-        if (mode.length() == 0) {
-            sendError(4, "Mode length is null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Mode length is null"));
-        }
-        String[] modes = {"netascii", "octet"};
-        if (!Arrays.asList(modes).contains(mode.toLowerCase())) {
-            sendError(4, "Unknown mode length", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Unknown mode length"));
-        }
-    }
-
-    private String extractFileName(byte[] data) {
-        String res = "";
-        for (int i = 2; i < data.length; i++) {
-            if (data[i] == 0) {
-                return res;
-            }
-            res += (char) data[i];
-        }
-        return res;
-    }
-
-    private void checkDataPayload(DatagramPacket dp) throws ServerIllegalTFTPOperationException {
+    private void checkDataPayload(DatagramPacket dp) throws Exception {
         byte[] data = dp.getData();
         if (data[0] != 0) {
             sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
@@ -269,19 +211,22 @@ public class LocalClient  {
     }
 
     private int exceptionOccurred(Exception e)  {
-        if ( ( e.getMessage().contains("Access") || e.getMessage().contains("access") ) && e.getMessage().contains("denied")) {
-            sendError(2, e.getMessage(), server_address, server_port);
-            throw (new AccessDeniedException("Access denied to the file"));
+        try {
+            if ((e.getMessage().contains("Access") || e.getMessage().contains("access")) && e.getMessage().contains("denied")) {
+                sendError(2, e.getMessage(), server_address, server_port);
+                return error_access_denied_file;
+                //throw (new AccessDeniedException("Access denied to the file"));
+            } else if (e.getMessage().contains("space") && e.getMessage().contains("disk")) {
+                sendError(3, e.getMessage(), server_address, server_port);
+                return error_client_disk_full;
+            } else if (e instanceof SocketException) {
+                sendError(0, e.getMessage(), server_address, server_port);
+                return error_client_undefined;
+            }
+        } catch (Exception e1) {
+            return error_client_undefined;
         }
-        else if ( e.getMessage().contains("space") && e.getMessage().contains("disk")) {
-            //TODO throw an exception
-            sendError(3, e.getMessage(), server_address, server_port);
-        }
-        else if (e instanceof SocketException) {
-            //TODO throw an exception
-            sendError(0, e.getMessage(), server_address, server_port);
-        }
-        return 666;
+        return error_client_undefined;
     }
 
     private void sendError(int error_number, String message, InetAddress adr, int port) throws Exception {
