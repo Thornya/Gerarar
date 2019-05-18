@@ -23,7 +23,6 @@ public class ViewController {
     public TextField TFadresseIP, TFport, TFnomFicher;
     public Label labelNomFichier;
     private static String IP, port, fichier;
-    private LocalClient client;
     private static int retourFonction = 0;
 
     private final String erreurTitre = "Erreur!";
@@ -32,7 +31,6 @@ public class ViewController {
 
     @FXML
     private void initialize() {
-        client = LocalClient.getInstance();
         setupButtonValiderIP();
         setupButtonParcourir();
         setupButtonEnvoyer();
@@ -82,7 +80,7 @@ public class ViewController {
     private void setupButtonEnvoyer(){
         buttonEnvoyer.setOnAction(event ->{
             if (testReadyE()) {
-                retourFonction = client.SendFile(IP, port, fichier);
+                retourFonction = LocalClient.SendFile(IP, port, fichier);
                 if (retourFonction != LocalClient.transfer_successful) {
                     newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
                     retourFonction = 0;
@@ -94,7 +92,7 @@ public class ViewController {
     private void setupButtonTelecharger(){
         buttonTelecharger.setOnAction(event ->{
             if (testReadyR()) {
-                retourFonction = client.ReceiveFile(IP, port, fichier);
+                retourFonction = LocalClient.ReceiveFile(IP, port, fichier);
                 if (retourFonction != LocalClient.transfer_successful) {
                     newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
                     retourFonction = 0;
