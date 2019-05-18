@@ -6,9 +6,8 @@ import java.net.*;
 import java.io.*;
 
 public class LocalClient  {
-    private static LocalClient instance;
     public static final int max_trial_transfert = 3;
-    public static final int wait_time_transfert_ms = 5000;
+    public static final int wait_time_transfert_ms = 10000;
 
     public static final int transfer_successful = 0;
 
@@ -44,15 +43,12 @@ public class LocalClient  {
 
     private static final short error_code_undefined = 0, error_code_file_not_found = 1, error_code_access_violation = 2, error_code_disk_full = 3, error_code_illegal_tftp_operation = 4, error_code_unknown_transfer_id = 5, error_code_file_already_exists = 6,error_code_unkown_user = 7;
 
-    private InetAddress server_address;
-    private int server_port;
-    private DatagramSocket ds;
+    private static InetAddress server_address;
+    private static int server_port;
+    private static DatagramSocket ds;
 
-    public static LocalClient getInstance(){
-        return instance;
-    }
 
-    public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
+    public static int ReceiveFile(String server_address_str, String server_port_str, String filepath) {
         try {
             try {
                 server_port = Integer.parseInt(server_port_str);
@@ -73,7 +69,8 @@ public class LocalClient  {
             }
 
             byte[] buff = new byte[8192];
-            FileOutputStream fo = new FileOutputStream(filename);
+            File file = new File(filepath);
+            FileOutputStream fo = new FileOutputStream(file);
 
             short nPacket = 1;
             int size = -1;
@@ -81,8 +78,8 @@ public class LocalClient  {
             boolean received=false;
 
             while(!received && trial_transfert<max_trial_transfert) {
-                sendRequest(opcode_RRQ,filename);
-                size = receiveDATA(buff, nPacket);
+                sendRequest(opcode_RRQ,file.getName());
+                size = receiveDATA(buff, nPacket, true);
                 if(size != -1)
                     received=true;
                 else
@@ -99,7 +96,7 @@ public class LocalClient  {
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
                     sendACK(nPacket);
-                    size = receiveDATA(buff, (short) (nPacket + 1));
+                    size = receiveDATA(buff, (short) (nPacket + 1), false);
                     if(size != -1) {
                         nPacket++;
                         received = true;
@@ -115,6 +112,10 @@ public class LocalClient  {
 
             sendACK(nPacket);
             fo.close();
+        } catch (NullPointerException e) {
+            System.err.println("NullPointerException occurred while initializing in 'SendFile' method : ");
+            e.printStackTrace();
+            return error_client_file_not_found;
         } catch (FileNotFoundException e) {
             System.err.println("FileNotFoundException occurred while initializing in 'ReceiveFile' method : ");
             e.printStackTrace();
@@ -130,7 +131,7 @@ public class LocalClient  {
         return transfer_successful;
     }
 
-    public int SendFile(String server_address_str, String server_port_str, String filename) {
+    public static int SendFile(String server_address_str, String server_port_str, String filepath) {
         try {
             server_port = Integer.parseInt(server_port_str);
             server_address = InetAddress.getByName(server_address_str);
@@ -149,44 +150,49 @@ public class LocalClient  {
             return error_creating_socket;
         }
         try {
-            FileInputStream fe = new FileInputStream(filename);
-            byte[] input= new byte[512];
-            int size=fe.read(input,0,512);
+            File file = new File(filepath);
+            FileInputStream fe = new FileInputStream(file);
+            byte[] input = new byte[512];
+            int size = fe.read(input, 0, 512);
 
-            int trial_transfert=0;
-            boolean received=false;
-            while(!received && trial_transfert<max_trial_transfert) {
-                sendRequest(opcode_WRQ,filename);
-                if(receiveACK((short)0))
-                    received=true;
+            int trial_transfert = 0;
+            boolean received = false;
+            while (!received && trial_transfert < max_trial_transfert) {
+                sendRequest(opcode_WRQ, file.getName());
+                if (receiveACK((short) 0, true))
+                    received = true;
                 else
                     trial_transfert++;
-            }if(trial_transfert==max_trial_transfert)
+            }
+            if (trial_transfert == max_trial_transfert)
                 return error_unavailable_server;
 
-            short blockid=1;
-            boolean finTransfert=false;
-            while(!finTransfert){
-                finTransfert=size!=512;
-                trial_transfert=0;
-                received=false;
-                while(!received && trial_transfert<max_trial_transfert) {
+            short blockid = 1;
+            boolean finTransfert = false;
+            while (!finTransfert) {
+                finTransfert = size != 512;
+                trial_transfert = 0;
+                received = false;
+                while (!received && trial_transfert < max_trial_transfert) {
                     sendData(input, blockid);
-                    if(receiveACK(blockid))
-                        received=true;
+                    if (receiveACK(blockid, false))
+                        received = true;
                     else
                         trial_transfert++;
                 }
-                if(trial_transfert==max_trial_transfert)
+                if (trial_transfert == max_trial_transfert)
                     return error_unavailable_server;
                 blockid++;
-                if(!finTransfert)
-                    size = fe.read(input, (blockid-1) * 512, 512);
-
+                if (!finTransfert)
+                    size = fe.read(input, (blockid - 1) * 512, 512);
 
 
             }
             fe.close();
+        } catch (NullPointerException e) {
+            System.err.println("NullPointerException occurred while initializing in 'SendFile' method : ");
+            e.printStackTrace();
+            return error_client_file_not_found;
         } catch (FileNotFoundException e) {
             System.err.println("FileNotFoundException occurred while initializing in 'SendFile' method : ");
             e.printStackTrace();
@@ -205,7 +211,7 @@ public class LocalClient  {
 
 
 
-    private int exceptionOccurred(Exception e)  {
+    private static int exceptionOccurred(Exception e)  {
         System.err.println("Exception occured : ");
         e.printStackTrace();
         try {
@@ -255,7 +261,7 @@ public class LocalClient  {
 
 
 
-    private boolean receiveACK(short nPacket) throws Exception  {
+    private static boolean receiveACK(short nPacket, boolean overrideTID) throws Exception  {
         byte[] buff = new byte[4];
 
         DatagramPacket dp = new DatagramPacket(buff,buff.length);
@@ -265,9 +271,9 @@ public class LocalClient  {
         }catch(SocketTimeoutException e) {
             return false;
         }
-        if(dp.getPort()!=server_port) {
+        if(!overrideTID && dp.getPort()!=server_port) {
             sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
-            return receiveACK(nPacket);
+            return receiveACK(nPacket, overrideTID);
         }
         byte[] opCode = {dp.getData()[0],dp.getData()[1]};
         if (opcode_ACK != convertisseurByteShort(opCode)) {
@@ -276,7 +282,7 @@ public class LocalClient  {
             }
             else {
                 sendError(error_code_illegal_tftp_operation, "Expected ACK paquet, received something else", dp.getAddress(), dp.getPort());
-                throw new ClientIllegalTFTPOperationException("Expected ACK paquet, received something else");
+                throw new ClientIllegalTFTPOperationException("Expected ACK paquet, received something else : ");
             }
         }
         byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
@@ -287,7 +293,7 @@ public class LocalClient  {
         return true;
     }
 
-    private int receiveDATA(byte[] data, short nPacket) throws Exception {
+    private static int receiveDATA(byte[] data, short nPacket, boolean overrideTID) throws Exception {
         DatagramPacket dp = new DatagramPacket(data,data.length);
         try {
             ds.setSoTimeout(wait_time_transfert_ms);
@@ -295,9 +301,9 @@ public class LocalClient  {
         }catch(SocketTimeoutException e) {
             return -1;
         }
-        if (dp.getPort()!=server_port) {
+        if (!overrideTID && dp.getPort()!=server_port) {
             sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
-            return receiveDATA(data, nPacket);
+            return receiveDATA(data, nPacket, overrideTID);
         }
         byte[] opCode = {dp.getData()[0],dp.getData()[1]};
         if (opcode_DATA != convertisseurByteShort(opCode)) {
@@ -318,7 +324,7 @@ public class LocalClient  {
 
     }
 
-    private void receivedError(byte[] data) throws Exception {
+    private static void receivedError(byte[] data) throws Exception {
         byte[] errorCode = {data[2],data[3]};
         String errorMessage = "";
         for (int i = 2; i < data.length; i++) {
@@ -349,7 +355,7 @@ public class LocalClient  {
 
 
 
-    private void sendRequest(int opnumber, String filename_str) throws Exception {
+    private static void sendRequest(int opnumber, String filename_str) throws Exception {
         byte[] opcode = new byte[2];
         if (opnumber != opcode_RRQ && opnumber != opcode_WRQ) {
             throw new Exception("Opnumber not valid in sendRequest");
@@ -386,7 +392,7 @@ public class LocalClient  {
         }
     }
 
-    private void sendError(short error_number, String message, InetAddress adr, int port) throws Exception {
+    private static void sendError(short error_number, String message, InetAddress adr, int port) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_ERR;
 
@@ -417,7 +423,7 @@ public class LocalClient  {
         }
     }
 
-    private void sendData(byte[] data, short blockid) throws Exception {
+    private static void sendData(byte[] data, short blockid) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
 
@@ -446,7 +452,7 @@ public class LocalClient  {
 
     }
 
-    private void sendACK(short nPacket) throws Exception {
+    private static void sendACK(short nPacket) throws Exception {
     	byte[] payloadACK = new byte[4];
     	payloadACK[1] = opcode_ACK;
 
@@ -465,8 +471,10 @@ public class LocalClient  {
 
 
 
-    private short convertisseurByteShort(byte[] data){
-        return (short) (data[1]*255+data[0]);
+    private static short convertisseurByteShort(byte[] data){
+        short res = (short) (data[0]*255+data[1]);
+        System.out.println("byte to short : " + res);
+        return res;
     }
 
 }
