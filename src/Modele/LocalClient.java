@@ -196,7 +196,7 @@ public class LocalClient  {
                     return error_unavailable_server;
                 blockid++;
                 if (!finTransfert)
-                    size = fe.read(input, (blockid - 1) * 512, 512);
+                    size = fe.read(input, 0, 512);
                     System.out.println("Size lue : " + size + ", blockid : " + blockid);
 
             }
@@ -271,8 +271,6 @@ public class LocalClient  {
         }
         return error_client_undefined;
     }
-
-
 
     private static boolean receiveACK(short nPacket, boolean overrideTID) throws Exception  {
         byte[] buff = new byte[4];
@@ -373,8 +371,6 @@ public class LocalClient  {
                 throw new ServerUndefinedException(errorMessage);
         }
     }
-
-
 
     private static void sendRequest(int opnumber, String filename_str) throws Exception {
         byte[] opcode = new byte[2];
