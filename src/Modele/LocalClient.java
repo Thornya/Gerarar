@@ -271,7 +271,9 @@ public class LocalClient  {
         }catch(SocketTimeoutException e) {
             return false;
         }
-        if(!overrideTID && dp.getPort()!=server_port) {
+        if (overrideTID) {
+            server_port = dp.getPort();
+        } else if (dp.getPort()!=server_port) {
             sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
             return receiveACK(nPacket, overrideTID);
         }
@@ -301,7 +303,9 @@ public class LocalClient  {
         }catch(SocketTimeoutException e) {
             return -1;
         }
-        if (!overrideTID && dp.getPort()!=server_port) {
+        if (overrideTID) {
+            server_port = dp.getPort();
+        } else if (dp.getPort()!=server_port) {
             sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
             return receiveDATA(data, nPacket, overrideTID);
         }
@@ -472,9 +476,7 @@ public class LocalClient  {
 
 
     private static short convertisseurByteShort(byte[] data){
-        short res = (short) (data[0]*255+data[1]);
-        System.out.println("byte to short : " + res);
-        return res;
+        return (short) (data[0]*255+data[1]);
     }
 
 }
