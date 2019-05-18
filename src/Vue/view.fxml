@@ -96,7 +96,7 @@
                     <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
                     <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
                 </rowConstraints>
-                <TextField fx:id="TFnomFicher" maxWidth="-Infinity" prefWidth="200.0" promptText="Nom du fichier"
+                <TextField fx:id="TFnomFichier" maxWidth="-Infinity" prefWidth="200.0" promptText="Nom du fichier"
                            GridPane.halignment="CENTER"/>
                 <Button fx:id="buttonTelecharger" disable="true" mnemonicParsing="false" text="Télécharger"
                         GridPane.halignment="CENTER" GridPane.rowIndex="1"/>
