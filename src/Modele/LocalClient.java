@@ -4,18 +4,11 @@ import Exceptions.*;
 
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
 public class LocalClient  {
     private static LocalClient instance;
     public static final int max_trial_transfert = 3;
     public static final int wait_time_transfert_ms = 5000;
-
-    public static final int opcode_RRQ = 1;
-    public static final int opcode_WRQ = 2;
-    public static final int opcode_DATA = 3;
-    public static final int opcode_ACK = 4;
-    public static final int opcode_ERR = 5;
 
     public static final int transfer_successful = 0;
 
@@ -31,18 +24,25 @@ public class LocalClient  {
     public static final int error_server_unkown_user = 170;
 
     public static final int error_file_creation = - 10;
-    public static final int error_access_denied_file = -20;
+    public static final int error_unable_to_send_packet = -20;
     public static final int error_creating_socket = - 30;
     public static final int error_merging_byte_arrays = - 40;
+    public static final int error_no_valid_server_address = - 50;
+    public static final int error_no_valid_server_port = - 60;
+    public static final int error_while_dealing_exception = -70;
 
     public static final int error_client_undefined = -100;
     public static final int error_client_file_not_found = -110;
     public static final int error_client_access_violation = -120;
     public static final int error_client_disk_full = -130;
     public static final int error_client_illegal_tftp_operation = -140;
-    public static final int error_client_unknown_transfer_id = -150;
-    public static final int error_client_file_already_exists = -160;
-    public static final int error_client_unkown_user = -170;
+    //public static final int error_client_unknown_transfer_id = -150;
+    //public static final int error_client_file_already_exists = -160;
+    //public static final int error_client_unkown_user = -170;
+
+    private static final int opcode_RRQ = 1, opcode_WRQ = 2, opcode_DATA = 3, opcode_ACK = 4, opcode_ERR = 5;
+
+    private static final short error_code_undefined = 0, error_code_file_not_found = 1, error_code_access_violation = 2, error_code_disk_full = 3, error_code_illegal_tftp_operation = 4, error_code_unknown_transfer_id = 5, error_code_file_already_exists = 6,error_code_unkown_user = 7;
 
     private InetAddress server_address;
     private int server_port;
@@ -53,78 +53,103 @@ public class LocalClient  {
     }
 
     public int ReceiveFile(String server_address_str, String server_port_str, String filename) {
-    	byte[] buff = new byte[8192];
-    	FileOutputStream fo = null;
         try {
-            fo = new FileOutputStream(filename);
-            server_address = InetAddress.getByName(server_address_str);
-            ds = new DatagramSocket();
-            sendRequest(opcode_RRQ, filename);
-            int size = receiveDATA(buff);
-            byte[] blockId = { buff[2], buff[3] } ;
-            sendACK((short) 1);
-            fo.write(buff, 0, size);
-            boolean finTransfert = (size != 512);
-            short nPacket = 1;
-            while(!finTransfert) {
-                size = receiveDATA(buff);
-                blockId[0] = buff[2];
-                blockId[1] = buff[3];
-                short nPackShort = convertisseurByteShort(blockId);
-                if(nPackShort != nPacket) {
-                    //TODO gérer le cas "réception du mauvais paquet
-                    sendACK((short) (nPackShort-1));
-                }
-                else {
-                    sendACK(nPackShort);
-                    nPacket ++;
-                }
-                finTransfert = (size != 512);
-                fo.write(buff, nPacket*512, buff.length);
+            try {
+                server_port = Integer.parseInt(server_port_str);
+                server_address = InetAddress.getByName(server_address_str);
+                ds = new DatagramSocket();
+            } catch (NumberFormatException e) {
+                System.err.println("NumberFormatException occurred while initializing in 'ReceiveFile' method : ");
+                e.printStackTrace();
+                return error_no_valid_server_port;
+            }  catch (UnknownHostException e) {
+                System.err.println("UnknownHostException occurred while initializing in 'ReceiveFile' method : ");
+                e.printStackTrace();
+                return error_no_valid_server_address;
+            } catch (SocketException e) {
+                System.err.println("SocketException occurred while initializing in 'ReceiveFile' method : ");
+                e.printStackTrace();
+                return error_creating_socket;
             }
 
+            byte[] buff = new byte[8192];
+            FileOutputStream fo = new FileOutputStream(filename);
+
+            short nPacket = 1;
+            int size = -1;
+            int trial_transfert=0;
+            boolean received=false;
+
+            while(!received && trial_transfert<max_trial_transfert) {
+                sendRequest(opcode_RRQ,filename);
+                size = receiveDATA(buff, nPacket);
+                if(size != -1)
+                    received=true;
+                else
+                    trial_transfert++;
+            }if(trial_transfert==max_trial_transfert)
+                return error_unavailable_server;
+
+            fo.write(buff, 0, size);
+            boolean finTransfert = (size != 512);
+
+            while(!finTransfert) {
+
+                trial_transfert=0;
+                received=false;
+                while(!received && trial_transfert<max_trial_transfert) {
+                    sendACK(nPacket);
+                    size = receiveDATA(buff, (short) (nPacket + 1));
+                    if(size != -1) {
+                        nPacket++;
+                        received = true;
+                    }
+                    else
+                        trial_transfert++;
+                }if(trial_transfert==max_trial_transfert)
+                    return error_unavailable_server;
+
+                finTransfert = (size != 512);
+                fo.write(buff, (nPacket - 1) * 512, buff.length);
+            }
+
+            sendACK(nPacket);
             fo.close();
-        }catch (Exception e) {
+        } catch (FileNotFoundException e) {
+            System.err.println("FileNotFoundException occurred while initializing in 'ReceiveFile' method : ");
+            e.printStackTrace();
+            if ( e.getMessage().toLowerCase().contains("access") && e.getMessage().toLowerCase().contains("denied")) {
+                return error_client_access_violation;
+            } else if (e.getMessage().toLowerCase().contains("space") && e.getMessage().toLowerCase().contains("disk")) {
+                return error_client_disk_full;
+            }
+            return error_file_creation;
+        } catch (Exception e) {
             return exceptionOccurred(e);
 		}
-        server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
 
-
-    private void checkDataPayload(DatagramPacket dp) throws Exception {
-        byte[] data = dp.getData();
-        if (data[0] != 0) {
-            sendError(4, "First byte is not null", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("First byte is not null"));
-        }
-
-        if (! (data[1] == opcode_DATA) ) {
-            sendError(4, "Expecting DATA, received different opcode", dp.getAddress(), dp.getPort());
-            throw (new ServerIllegalTFTPOperationException("Expecting DATA, received different opcode"));
-        }
-    }
-    private short convertisseurByteShort(byte[] data){
-        return (short) (data[1]*255+data[0]);
-    }
-
-
-
-
     public int SendFile(String server_address_str, String server_port_str, String filename) {
         try {
+            server_port = Integer.parseInt(server_port_str);
             server_address = InetAddress.getByName(server_address_str);
             ds = new DatagramSocket();
+        } catch (NumberFormatException e) {
+            System.err.println("NumberFormatException occurred while initializing in 'SendFile' method : ");
+            e.printStackTrace();
+            return error_no_valid_server_port;
         } catch (UnknownHostException e) {
-            //TODO gérer l'exception
+            System.err.println("UnknownHostException occurred while initializing in 'SendFile' method : ");
             e.printStackTrace();
+            return error_no_valid_server_address;
         } catch (SocketException e) {
-            System.err.println("Socket Exception occurred while initializing in 'SendFile' method : ");
+            System.err.println("SocketException occurred while initializing in 'SendFile' method : ");
             e.printStackTrace();
+            return error_creating_socket;
         }
-        FileInputStream fe= null;
         try {
-            fe = new FileInputStream(filename);
+            FileInputStream fe = new FileInputStream(filename);
             byte[] input= new byte[512];
             int size=fe.read(input,0,512);
 
@@ -146,7 +171,7 @@ public class LocalClient  {
                 trial_transfert=0;
                 received=false;
                 while(!received && trial_transfert<max_trial_transfert) {
-                    sendData(input, size, blockid);
+                    sendData(input, blockid);
                     if(receiveACK(blockid))
                         received=true;
                     else
@@ -163,20 +188,171 @@ public class LocalClient  {
             }
             fe.close();
         } catch (FileNotFoundException e) {
-            return error_client_file_not_found;
+            System.err.println("FileNotFoundException occurred while initializing in 'SendFile' method : ");
+            e.printStackTrace();
+            if ( e.getMessage().toLowerCase().contains("access") && e.getMessage().toLowerCase().contains("denied")) {
+                return error_client_access_violation;
+            } else if (e.getMessage().toLowerCase().contains("space") && e.getMessage().toLowerCase().contains("disk")) {
+                return error_client_disk_full;
+            } else {
+                return error_client_file_not_found;
+            }
         } catch (Exception e) {
             exceptionOccurred(e);
         }
-
-
-        server_port = Integer.parseInt(server_port_str);
         return transfer_successful;
     }
+
+
+
+    private int exceptionOccurred(Exception e)  {
+        System.err.println("Exception occured : ");
+        e.printStackTrace();
+        try {
+            if (e instanceof SocketException) {
+                sendError(error_code_undefined, e.getMessage(), server_address, server_port);
+                return error_client_undefined;
+            } else if (e instanceof UnknownHostException) {
+                return error_no_valid_server_address;
+            } else if (e instanceof MergingByteArraysException) {
+                sendError(error_code_undefined, e.getMessage(), server_address, server_port);
+                return error_merging_byte_arrays;
+            } else if (e instanceof ClientIllegalTFTPOperationException) {
+                sendError(error_code_illegal_tftp_operation, e.getMessage(), server_address, server_port);
+                return error_client_illegal_tftp_operation;
+            } else if (e instanceof UnableToSendPacketException) {
+                return error_unable_to_send_packet;
+            } else if (e instanceof ServerUndefinedException) {
+                return error_server_undefined;
+            } else if (e instanceof ServerFileNotFoundException) {
+                return error_server_file_not_found;
+            } else if (e instanceof ServerAccessViolationException) {
+                return error_server_access_violation;
+            } else if (e instanceof ServerDiskFullException) {
+                return error_server_disk_full;
+            } else if (e instanceof ServerIllegalTFTPOperationException) {
+                return error_server_illegal_tftp_operation;
+            } else if (e instanceof ServerUnkownTransferIDException) {
+                return error_server_unknown_transfer_id;
+            } else if (e instanceof ServerFileAlreadyExistsException) {
+                return error_server_file_already_exists;
+            } else if (e instanceof ServerUnkownUserException) {
+                return error_server_unkown_user;
+            } else if (e.getMessage().toLowerCase().contains("access") && e.getMessage().toLowerCase().contains("denied")) {
+                 sendError(error_code_access_violation, e.getMessage(), server_address, server_port);
+                 return error_client_access_violation;
+            } else if (e.getMessage().toLowerCase().contains("space") && e.getMessage().toLowerCase().contains("disk")) {
+                 sendError(error_code_disk_full, e.getMessage(), server_address, server_port);
+                 return error_client_disk_full;
+            }
+        } catch (Exception e1) {
+            System.err.println("Exception in exceptionOccured method : ");
+            e1.printStackTrace();
+            return error_while_dealing_exception;
+        }
+        return error_client_undefined;
+    }
+
+
+
+    private boolean receiveACK(short nPacket) throws Exception  {
+        byte[] buff = new byte[4];
+
+        DatagramPacket dp = new DatagramPacket(buff,buff.length);
+        try {
+            ds.setSoTimeout(wait_time_transfert_ms);
+            ds.receive(dp);
+        }catch(SocketTimeoutException e) {
+            return false;
+        }
+        if(dp.getPort()!=server_port) {
+            sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
+            return receiveACK(nPacket);
+        }
+        byte[] opCode = {dp.getData()[0],dp.getData()[1]};
+        if (opcode_ACK != convertisseurByteShort(opCode)) {
+            if (opcode_ERR == convertisseurByteShort(opCode)) {
+                receivedError(dp.getData());
+            }
+            else {
+                sendError(error_code_illegal_tftp_operation, "Expected ACK paquet, received something else", dp.getAddress(), dp.getPort());
+                throw new ClientIllegalTFTPOperationException("Expected ACK paquet, received something else");
+            }
+        }
+        byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
+        if (nPacket != convertisseurByteShort(packetNumber)) {
+            sendError(error_code_illegal_tftp_operation, "Acquitted packet number doesn't match", dp.getAddress(),dp.getPort());
+            throw  new ClientIllegalTFTPOperationException("Acquitted packet number doesn't match");
+        }
+        return true;
+    }
+
+    private int receiveDATA(byte[] data, short nPacket) throws Exception {
+        DatagramPacket dp = new DatagramPacket(data,data.length);
+        try {
+            ds.setSoTimeout(wait_time_transfert_ms);
+            ds.receive(dp);
+        }catch(SocketTimeoutException e) {
+            return -1;
+        }
+        if (dp.getPort()!=server_port) {
+            sendError(error_code_unknown_transfer_id, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
+            return receiveDATA(data, nPacket);
+        }
+        byte[] opCode = {dp.getData()[0],dp.getData()[1]};
+        if (opcode_DATA != convertisseurByteShort(opCode)) {
+            if (opcode_ERR == convertisseurByteShort(opCode)) {
+                receivedError(dp.getData());
+            }
+            else {
+                sendError(error_code_illegal_tftp_operation, "Expected DATA paquet, received something else", dp.getAddress(), dp.getPort());
+                throw new ClientIllegalTFTPOperationException("Expected DATA paquet, received something else");
+            }
+        }
+        byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
+        if (nPacket != convertisseurByteShort(packetNumber)) {
+            sendError(error_code_illegal_tftp_operation, "Data packet number doesn't match expected packet number", dp.getAddress(),dp.getPort());
+            throw  new ClientIllegalTFTPOperationException("Data packet number doesn't match expected packet number");
+        }
+        return dp.getLength();
+
+    }
+
+    private void receivedError(byte[] data) throws Exception {
+        byte[] errorCode = {data[2],data[3]};
+        String errorMessage = "";
+        for (int i = 2; i < data.length; i++) {
+            if (data[i] == 0) {
+                break;
+            }
+            errorMessage += (char) data[i];
+        }
+        switch (convertisseurByteShort(errorCode)) {
+            case error_code_file_not_found:
+                throw new ServerFileNotFoundException(errorMessage);
+            case error_code_access_violation:
+                throw new ServerAccessViolationException(errorMessage);
+            case error_code_disk_full:
+                throw new ServerDiskFullException(errorMessage);
+            case error_code_illegal_tftp_operation:
+                throw new ServerIllegalTFTPOperationException(errorMessage);
+            case error_code_unknown_transfer_id:
+                throw new ServerUnkownTransferIDException(errorMessage);
+            case error_code_file_already_exists:
+                throw new ServerFileAlreadyExistsException(errorMessage);
+            case error_code_unkown_user:
+                throw new ServerUnkownUserException(errorMessage);
+            default:
+                throw new ServerUndefinedException(errorMessage);
+        }
+    }
+
+
 
     private void sendRequest(int opnumber, String filename_str) throws Exception {
         byte[] opcode = new byte[2];
         if (opnumber != opcode_RRQ && opnumber != opcode_WRQ) {
-            return;
+            throw new Exception("Opnumber not valid in sendRequest");
         }
         else {
             opcode[1] = ((byte) opnumber);
@@ -200,41 +376,22 @@ public class LocalClient  {
             throw new MergingByteArraysException("Unable to merge byte arrays in sendRequest");
         }
 
-        byte buffer[] = outputStream.toByteArray();
+        byte[] buffer = outputStream.toByteArray();
 
         DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {
-            //TODO handle the exception
+            throw new UnableToSendPacketException("Unable to send request packet in sendRequest");
         }
     }
 
-    private int exceptionOccurred(Exception e)  {
-        try {
-            if ((e.getMessage().contains("Access") || e.getMessage().contains("access")) && e.getMessage().contains("denied")) {
-                sendError(2, e.getMessage(), server_address, server_port);
-                return error_access_denied_file;
-                //throw (new AccessDeniedException("Access denied to the file"));
-            } else if (e.getMessage().contains("space") && e.getMessage().contains("disk")) {
-                sendError(3, e.getMessage(), server_address, server_port);
-                return error_client_disk_full;
-            } else if (e instanceof SocketException) {
-                sendError(0, e.getMessage(), server_address, server_port);
-                return error_client_undefined;
-            }
-        } catch (Exception e1) {
-            return error_client_undefined;
-        }
-        return error_client_undefined;
-    }
-
-    private void sendError(int error_number, String message, InetAddress adr, int port) throws Exception {
+    private void sendError(short error_number, String message, InetAddress adr, int port) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_ERR;
 
         byte[] error_code = new byte[2];
-        error_code[2] = ((byte) error_number);
+        error_code[1] = ((byte) error_number);
 
         byte[] error_msg = message.getBytes();
 
@@ -250,7 +407,7 @@ public class LocalClient  {
             throw new MergingByteArraysException("Unable to merge byte arrays in sendError");
         }
 
-        byte buffer[] = outputStream.toByteArray();
+        byte[] buffer = outputStream.toByteArray();
 
         DatagramPacket dp = new DatagramPacket(buffer, buffer.length, adr, port);
         try {
@@ -260,8 +417,7 @@ public class LocalClient  {
         }
     }
 
-
-    private void sendData(byte[]data,int size,short blockid) throws Exception {
+    private void sendData(byte[] data, short blockid) throws Exception {
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
 
@@ -280,8 +436,8 @@ public class LocalClient  {
             throw new MergingByteArraysException("Unable to merge byte arrays in sendData");
         }
 
-        byte buffer[] = outputStream.toByteArray();
-        DatagramPacket dp = new DatagramPacket(buffer, size+4, server_address, server_port);
+        byte[] buffer = outputStream.toByteArray();
+        DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
         try {
             ds.send(dp);
         } catch (IOException e) {
@@ -289,6 +445,7 @@ public class LocalClient  {
         }
 
     }
+
     private void sendACK(short nPacket) throws Exception {
     	byte[] payloadACK = new byte[4];
     	payloadACK[1] = opcode_ACK;
@@ -305,36 +462,11 @@ public class LocalClient  {
 		}
     	
     }
-    private boolean receiveACK(short nPacket) throws Exception  {
-    	byte[] buff = new byte[4];
 
-        DatagramPacket dp = new DatagramPacket(buff,buff.length);
-        try {
-            ds.setSoTimeout(wait_time_transfert_ms);
-            ds.receive(dp);
-        }catch(SocketTimeoutException e) {
-            return false;
-        }
-        if(dp.getPort()!=server_port) {
-    		sendError(5, "TID doesn't match actual TID", dp.getAddress(),dp.getPort());
-    		return receiveACK(nPacket);
-    	}
-        byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
-        if (nPacket != convertisseurByteShort(packetNumber)) {
-            sendError(2, "Acquitted packet number doesn't match", dp.getAddress(),dp.getPort());
-            throw  new ClientIllegalTFTPOperationException("Acquitted packet number doesn't match");
-        }
-        return true;
+
+
+    private short convertisseurByteShort(byte[] data){
+        return (short) (data[1]*255+data[0]);
     }
-
-    private int receiveDATA(byte[] data) throws Exception {
-        DatagramPacket dp = new DatagramPacket(data,data.length);
-        ds.receive(dp);
-        checkDataPayload(dp);
-        return dp.getLength();
-    }
-
-
-
 
 }
