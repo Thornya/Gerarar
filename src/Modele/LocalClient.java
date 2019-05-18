@@ -90,7 +90,6 @@ public class LocalClient  {
         return transfer_successful;
     }
 
-
     private void checkRequestPayload(DatagramPacket dp) throws ServerIllegalTFTPOperationException {
         byte[] data = dp.getData();
         if (data[0] != 0) {
@@ -165,9 +164,6 @@ public class LocalClient  {
 
         return (short) (data[1]*255+data[0]);
     }
-
-
-
 
     public int SendFile(String server_address_str, String server_port_str, String filename) {
         try {
@@ -315,7 +311,6 @@ public class LocalClient  {
         }
     }
 
-
     private void sendData(byte[]data,int size,short blockid){
         byte[] opcode = new byte[2];
         opcode[1]=opcode_DATA;
@@ -389,8 +384,5 @@ public class LocalClient  {
         checkDataPayload(dp);
         return dp.getLength();
     }
-
-
-
 
 }
