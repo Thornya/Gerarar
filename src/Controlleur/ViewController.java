@@ -24,7 +24,7 @@ public class ViewController {
     public Label labelNomFichier;
     private static String IP, port, fichier;
     private LocalClient client;
-    private static int codeErreur = 0;
+    private static int retourFonction = 0;
 
     private final String erreurTitre = "Erreur!";
     private final String ipTitre = "Destination confirmée!";
@@ -82,10 +82,10 @@ public class ViewController {
     private void setupButtonEnvoyer(){
         buttonEnvoyer.setOnAction(event ->{
             if (testReadyE()) {
-                codeErreur = client.SendFile(IP, port, fichier);
-                if (codeErreur != 0) {
-                    newPopUp(erreurTitre, getErrorText(codeErreur), PopUpType.ERROR);
-                    codeErreur = 0;
+                retourFonction = client.SendFile(IP, port, fichier);
+                if (retourFonction != LocalClient.transfer_successful) {
+                    newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
+                    retourFonction = 0;
                 }
             }
         });
@@ -94,10 +94,10 @@ public class ViewController {
     private void setupButtonTelecharger(){
         buttonTelecharger.setOnAction(event ->{
             if (testReadyR()) {
-                codeErreur = client.ReceiveFile(IP, port, fichier);
-                if (codeErreur != 0) {
-                    newPopUp(erreurTitre, getErrorText(codeErreur), PopUpType.ERROR);
-                    codeErreur = 0;
+                retourFonction = client.ReceiveFile(IP, port, fichier);
+                if (retourFonction != LocalClient.transfer_successful) {
+                    newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
+                    retourFonction = 0;
                 }
             }
         });
@@ -158,24 +158,31 @@ public class ViewController {
 
     private String getErrorText(int errorCode){
         switch (errorCode){
-            case 10: return "Serveur inaccessible";
-            case 20: return "Pas de réponse du serveur";
-            case 30: return "Echec de l'envoi";
-            case 40: return "Echec de la reception";
+            case LocalClient.error_unavailable_server: return "Serveur inaccessible";
 
-            case 100: return "Interne au serveur";
-            case 110: return "Le fichier n'existe pas";
-            case 120: return "Autorisation serveur";
-            case 130: return "Serveur plein";
-            case 140: return "Operation TFTP non autorisée";
-            case 150: return "Paquet tier reçu";
-            case 160: return "Le fichier existe déjà";
-            case 170: return "Utilisateur inconnu";
+            case LocalClient.error_server_undefined: return "Erreur serveur : Inconnue";
+            case LocalClient.error_server_file_not_found: return "Erreur serveur : Fichier introuvable";
+            case LocalClient.error_server_access_violation: return "Erreur serveur : Accès interdit au fichier";
+            case LocalClient.error_server_disk_full: return "Erreur serveur : Disque serveur plein";
+            case LocalClient.error_server_illegal_tftp_operation: return "Erreur serveur : Opération TFTP non autorisée";
+            case LocalClient.error_server_unknown_transfer_id: return "Erreur serveur : L'ID de transfert ne correspond pas";
+            case LocalClient.error_server_file_already_exists: return "Erreur serveur : Le fichier existe déjà";
+            case LocalClient.error_server_unkown_user: return "Erreur serveur : Utilisateur inconnu";
 
-            case -10: return "Création du fichier";
-            case -20: return "Ecriture";
-            case -30: return "Création de la socket";
+            case LocalClient.error_file_creation: return "Erreur locale : Impossible de créer le fichier";
+            case LocalClient.error_unable_to_send_packet: return "Erreur locale : Impossible d'envoyer des données au serveur";
+            case LocalClient.error_creating_socket: return "Erreur locale : Impossible de créer le socket de communication";
+            case LocalClient.error_merging_byte_arrays: return "Erreur locale : Impossible de créer un DatagramPacket";
+            case LocalClient.error_no_valid_server_address: return "Erreur locale : Adresse serveur non-valide";
+            case LocalClient.error_no_valid_server_port: return "Erreur locale : Port serveur non-valide";
+            case LocalClient.error_while_dealing_exception: return "Erreur locale : Impossible de déterminer l'erreur";
+
+            case LocalClient.error_client_undefined: return "Erreur locale : Inconnue";
+            case LocalClient.error_client_file_not_found: return "Erreur locale : Fichier introuvable";
+            case LocalClient.error_client_access_violation: return "Erreur locale : Accès interdit au fichier";
+            case LocalClient.error_client_disk_full: return "Erreur locale : Disque client plein";
+            case LocalClient.error_client_illegal_tftp_operation: return "Erreur locale : Opération TFTP non autorisée";
         }
-        return null;
+        return "Erreur inconnue";
     }
 }
