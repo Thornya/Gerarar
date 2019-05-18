@@ -154,38 +154,48 @@ public class LocalClient  {
             FileInputStream fe = new FileInputStream(file);
             byte[] input = new byte[512];
             int size = fe.read(input, 0, 512);
+            System.out.println("Size initiale : " + size);
+            short blockid = 0;
 
             int trial_transfert = 0;
             boolean received = false;
-            while (!received && trial_transfert < max_trial_transfert) {
+            while (!received && (trial_transfert < max_trial_transfert) ) {
+                System.out.println("Envoi RRQ, tentative " + trial_transfert);
                 sendRequest(opcode_WRQ, file.getName());
-                if (receiveACK((short) 0, true))
-                    received = true;
-                else
+                System.out.println("RRQ envoyé, reception ACK initial");
+                if (receiveACK(blockid, true)) {
+                    System.out.println("ACK initial reçu");
+                    received = true;}
+                else {
                     trial_transfert++;
+                    System.out.println("ACK initial non reçu");}
             }
             if (trial_transfert == max_trial_transfert)
                 return error_unavailable_server;
 
-            short blockid = 1;
+            blockid ++;
             boolean finTransfert = false;
             while (!finTransfert) {
-                finTransfert = size != 512;
+                finTransfert = (size != 512);
                 trial_transfert = 0;
                 received = false;
-                while (!received && trial_transfert < max_trial_transfert) {
+                while (!received && (trial_transfert < max_trial_transfert) ) {
+                    System.out.println("Envoi data, tentative " + trial_transfert);
                     sendData(input, blockid);
-                    if (receiveACK(blockid, false))
+                    System.out.println("Data envoyé, reception ack");
+                    if (receiveACK(blockid, false)) {
                         received = true;
-                    else
+                        System.out.println("ACK reçu");}
+                    else{
                         trial_transfert++;
+                        System.out.println("ACK non reçu");}
                 }
                 if (trial_transfert == max_trial_transfert)
                     return error_unavailable_server;
                 blockid++;
                 if (!finTransfert)
                     size = fe.read(input, (blockid - 1) * 512, 512);
-
+                    System.out.println("Size lue : " + size + ", blockid : " + blockid);
 
             }
             fe.close();
@@ -278,6 +288,7 @@ public class LocalClient  {
             return receiveACK(nPacket, overrideTID);
         }
         byte[] opCode = {dp.getData()[0],dp.getData()[1]};
+        System.out.println("ACK reçu : opcode : " + convertisseurByteShort(opCode));
         if (opcode_ACK != convertisseurByteShort(opCode)) {
             if (opcode_ERR == convertisseurByteShort(opCode)) {
                 receivedError(dp.getData());
@@ -288,6 +299,7 @@ public class LocalClient  {
             }
         }
         byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
+        System.out.println("        packetnb : " + convertisseurByteShort(packetNumber));
         if (nPacket != convertisseurByteShort(packetNumber)) {
             sendError(error_code_illegal_tftp_operation, "Acquitted packet number doesn't match", dp.getAddress(),dp.getPort());
             throw  new ClientIllegalTFTPOperationException("Acquitted packet number doesn't match");
@@ -310,6 +322,7 @@ public class LocalClient  {
             return receiveDATA(data, nPacket, overrideTID);
         }
         byte[] opCode = {dp.getData()[0],dp.getData()[1]};
+        System.out.println("DATA reçu : opcode : " + convertisseurByteShort(opCode));
         if (opcode_DATA != convertisseurByteShort(opCode)) {
             if (opcode_ERR == convertisseurByteShort(opCode)) {
                 receivedError(dp.getData());
@@ -320,6 +333,7 @@ public class LocalClient  {
             }
         }
         byte[] packetNumber = {dp.getData()[2],dp.getData()[3]};
+        System.out.println("        packetnb : " + convertisseurByteShort(packetNumber));
         if (nPacket != convertisseurByteShort(packetNumber)) {
             sendError(error_code_illegal_tftp_operation, "Data packet number doesn't match expected packet number", dp.getAddress(),dp.getPort());
             throw  new ClientIllegalTFTPOperationException("Data packet number doesn't match expected packet number");
@@ -447,6 +461,7 @@ public class LocalClient  {
         }
 
         byte[] buffer = outputStream.toByteArray();
+        System.out.println("Envoi DATA : opcode : " + convertisseurByteShort(opcode) + ", blockid théorique : " + blockid + ", blockid reel : " + convertisseurByteShort(blockids) + ", length : " + buffer.length);
         DatagramPacket dp = new DatagramPacket(buffer, buffer.length, server_address, server_port);
         try {
             ds.send(dp);
