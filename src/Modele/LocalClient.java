@@ -4,7 +4,6 @@ import Exceptions.*;
 
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
 public class LocalClient  {
     public static final int max_trial_transfert = 3;
@@ -432,7 +431,7 @@ public class LocalClient  {
         byte[] blockids= new byte [2];
         blockids[1]=(byte)blockid;
         if (blockid>255){
-            blockid= (int)(blockid&0x0000FF00);
+            blockid= blockid&0x0000FF00;
             blockids[0]= (byte)(blockid/256);
         }
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
@@ -461,7 +460,7 @@ public class LocalClient  {
 
         payloadACK[3] = (byte) nPacket;
     	if(nPacket>255) {
-    	    nPacket = (int) (nPacket&0x0000FF00);
+    	    nPacket = nPacket&0x0000FF00;
     		payloadACK[2] = (byte)(nPacket/256);
     	}
 
@@ -485,7 +484,7 @@ public class LocalClient  {
         if(data[1]<0)
             petit=data[1]+256;
 
-        return (int) (grand*256+petit);
+        return grand*256+petit;
     }
 
 }
