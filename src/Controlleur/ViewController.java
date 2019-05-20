@@ -28,6 +28,9 @@ public class ViewController {
     private final String erreurTitre = "Erreur!";
     private final String ipTitre = "Destination confirmée!";
     private final String ipTexte = "Adresse IP et ports enregistrés.";
+    private final String succesTitre = "Transfert réussi";
+    private final String succesTexte = "Transfert effectué avec succès";
+
 
     @FXML
     private void initialize() {
@@ -85,6 +88,8 @@ public class ViewController {
                     newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
                     retourFonction = 0;
                 }
+                else
+                    newPopUp(succesTitre,succesTexte, PopUpType.INFO);
             }
         });
     }
@@ -97,6 +102,8 @@ public class ViewController {
                     newPopUp(erreurTitre, getErrorText(retourFonction), PopUpType.ERROR);
                     retourFonction = 0;
                 }
+                else
+                    newPopUp(succesTitre,succesTexte, PopUpType.INFO);
             }
         });
     }
