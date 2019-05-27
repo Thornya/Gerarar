@@ -24,7 +24,7 @@ public class startView extends Application {
         }
 
         if (root != null) {
-            primaryStage.setTitle("GERARAR");
+            primaryStage.setTitle("EZ TFTP");
             primaryStage.setScene(new Scene(root, 800, 500));
             primaryStage.setResizable(false);
             primaryStage.show();

@@ -133,7 +133,7 @@ public class ViewController {
         Stage stageNewWindow = new Stage();
         try {
             if (type == PopUpType.ERROR)
-                PopUpController.setTextPopUp("Erreur: " + text);
+                PopUpController.setTextPopUp(text);
             else
                 PopUpController.setTextPopUp(text);
             AnchorPane root = FXMLLoader.load(getClass().getResource("../Vue/popUp.fxml"));
@@ -162,32 +162,32 @@ public class ViewController {
     }
 
     private String getErrorText(int errorCode){
-        String res = errorCode+":";
+        String res = errorCode+"";
         switch (errorCode){
-            case LocalClient.error_unavailable_server: return res +  "Serveur inaccessible";
+            case LocalClient.error_unavailable_server: return  "Serveur inaccessible : erreur " + res;
 
-            case LocalClient.error_server_undefined: return res +  "Erreur serveur : Inconnue";
-            case LocalClient.error_server_file_not_found: return res +  "Erreur serveur : Fichier introuvable";
-            case LocalClient.error_server_access_violation: return res +  "Erreur serveur : Accès interdit au fichier";
-            case LocalClient.error_server_disk_full: return res +  "Erreur serveur : Disque serveur plein";
-            case LocalClient.error_server_illegal_tftp_operation: return res +  "Erreur serveur : Opération TFTP non autorisée";
-            case LocalClient.error_server_unknown_transfer_id: return res +  "Erreur serveur : L'ID de transfert ne correspond pas";
-            case LocalClient.error_server_file_already_exists: return res +  "Erreur serveur : Le fichier existe déjà";
-            case LocalClient.error_server_unkown_user: return res +  "Erreur serveur : Utilisateur inconnu";
+            case LocalClient.error_server_undefined: return  "Erreur serveur " + res + " : Inconnue";
+            case LocalClient.error_server_file_not_found: return  "Erreur serveur " + res + " : Fichier introuvable";
+            case LocalClient.error_server_access_violation: return  "Erreur serveur " + res + " : Accès interdit au fichier";
+            case LocalClient.error_server_disk_full: return  "Erreur serveur " + res + " : Disque serveur plein";
+            case LocalClient.error_server_illegal_tftp_operation: return  "Erreur serveur " + res + " : Opération TFTP non autorisée";
+            case LocalClient.error_server_unknown_transfer_id: return  "Erreur serveur" + res + " : L'ID de transfert ne correspond pas";
+            case LocalClient.error_server_file_already_exists: return  "Erreur serveur " + res + " : Le fichier existe déjà";
+            case LocalClient.error_server_unkown_user: return  "Erreur serveur " + res + " : Utilisateur inconnu";
 
-            case LocalClient.error_file_creation: return res +  "Erreur locale : Impossible de créer le fichier";
-            case LocalClient.error_unable_to_send_packet: return res +  "Erreur locale : Impossible d'envoyer des données au serveur";
-            case LocalClient.error_creating_socket: return res +  "Erreur locale : Impossible de créer le socket de communication";
-            case LocalClient.error_merging_byte_arrays: return res +  "Erreur locale : Impossible de créer un DatagramPacket";
-            case LocalClient.error_no_valid_server_address: return res +  "Erreur locale : Adresse serveur non-valide";
-            case LocalClient.error_no_valid_server_port: return res +  "Erreur locale : Port serveur non-valide";
-            case LocalClient.error_while_dealing_exception: return res +  "Erreur locale : Impossible de déterminer l'erreur";
+            case LocalClient.error_file_creation: return  "Erreur locale " + res + " : Impossible de créer le fichier";
+            case LocalClient.error_unable_to_send_packet: return  "Erreur locale " + res + " : Impossible d'envoyer des données au serveur";
+            case LocalClient.error_creating_socket: return  "Erreur locale " + res + " : Impossible de créer le socket de communication";
+            case LocalClient.error_merging_byte_arrays: return  "Erreur locale " + res + " : Impossible de créer un DatagramPacket";
+            case LocalClient.error_no_valid_server_address: return  "Erreur locale " + res + " : Adresse serveur non-valide";
+            case LocalClient.error_no_valid_server_port: return  "Erreur locale " + res + " : Port serveur non-valide";
+            case LocalClient.error_while_dealing_exception: return  "Erreur locale " + res + " : Impossible de déterminer l'erreur";
 
-            case LocalClient.error_client_undefined: return res +  "Erreur locale : Inconnue";
-            case LocalClient.error_client_file_not_found: return res +  "Erreur locale : Fichier introuvable";
-            case LocalClient.error_client_access_violation: return res +  "Erreur locale : Accès interdit au fichier";
-            case LocalClient.error_client_disk_full: return res +  "Erreur locale : Disque client plein";
-            case LocalClient.error_client_illegal_tftp_operation: return res +  "Erreur locale : Opération TFTP non autorisée";
+            case LocalClient.error_client_undefined: return  "Erreur locale " + res + " : Inconnue";
+            case LocalClient.error_client_file_not_found: return  "Erreur locale " + res + " : Fichier introuvable";
+            case LocalClient.error_client_access_violation: return  "Erreur locale " + res + " : Accès interdit au fichier";
+            case LocalClient.error_client_disk_full: return  "Erreur locale " + res + " : Disque client plein";
+            case LocalClient.error_client_illegal_tftp_operation: return  "Erreur locale " + res + " : Opération TFTP non autorisée";
         }
         return "Erreur inconnue: " + errorCode;
     }
